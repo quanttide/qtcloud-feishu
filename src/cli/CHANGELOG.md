@@ -11,6 +11,6 @@
 
 ### Changed
 
-- 能力层重构：契约抽为 `Capabilities` trait（`src/capabilities.rs`），`Mock` 改为构造注入
+- 能力层重构：契约抽为 `Capabilities` trait（`src/mail.rs`，由 capabilities 改名而来），`Mock` 改为构造注入
   （`Mock::default()` 保实验室夹具），`send_mail` 返回 `Result` 并留存已发记录；示例签名收
   `&impl Capabilities`，补「动作失败不挪格」「迟到追认」两条测试。

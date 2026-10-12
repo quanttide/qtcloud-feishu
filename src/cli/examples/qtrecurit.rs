@@ -13,7 +13,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use chrono::{Local, NaiveDate};
-use qtcloud_feishu_cli::capabilities::Capabilities;
+use qtcloud_feishu_cli::mail::Capabilities;
 use qtcloud_feishu_cli::mock::Mock;
 use serde::{Deserialize, Serialize};
 
@@ -309,7 +309,7 @@ fn days_since(from: &str, to: &str) -> Option<i64> {
     Some((parse(to)? - parse(from)?).num_days())
 }
 
-// 能力层在库里：契约 `qtcloud_feishu_cli::capabilities`，夹具实现 `qtcloud_feishu_cli::mock`
+// 能力层在库里：契约 `qtcloud_feishu_cli::mail`，夹具实现 `qtcloud_feishu_cli::mock`
 //（对应实验室 capabilities/；换实现不换执行器，签名收 &impl Capabilities）。
 
 // ── 执行器：一轮推一步（对应 runner.py）────────────────────────
