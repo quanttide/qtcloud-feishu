@@ -13,6 +13,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use chrono::{Local, NaiveDate};
+use qtcloud_feishu_cli::mock::Mock;
 use serde::{Deserialize, Serialize};
 
 /// 流程定义：与实验室 `tests/fixtures/flows/recruitment.yaml` 同步拷贝。
@@ -164,21 +165,6 @@ const FLOW_YAML: &str = r#"# 招聘流程定义
   - 文件夹漂移的自动补拉范围（现在靠人记得）
   - Spam 里有效投递的自动识别"#;
 
-/// 收件箱里的投递（夹具同步拷贝）：邮箱 → 投递日。
-const INBOX: &[(&str, &str)] = &[
-    ("chenmo@example.com", "2026-10-02"),
-    ("herui@example.com", "2026-10-04"),
-    ("linyizhou@example.com", "2026-10-03"),
-    ("suxiao@example.com", "2026-10-03"),
-];
-
-/// 群成员（夹具同步拷贝）：含员工，候选人只取交集。
-const GROUP_MEMBERS: &[&str] = &[
-    "herui@example.com",
-    "yuanyu@example.com",
-    "hyacinth@example.com",
-];
-
 // ── 流程定义：YAML → 结构（对应 flow.py）────────────────────────
 
 #[derive(Deserialize)]
@@ -322,46 +308,7 @@ fn days_since(from: &str, to: &str) -> Option<i64> {
     Some((parse(to)? - parse(from)?).num_days())
 }
 
-// ── 能力层：mock（对应 capabilities/mock.py，夹具内嵌本文件）───────
-
-struct Mail {
-    sender: String,
-    date: String,
-}
-
-struct Mock;
-
-impl Mock {
-    /// 读某个文件夹的邮件。示例只带收件箱——derive 只认收件箱，与 Python 版一致。
-    fn read_mail(&self, folder: &str) -> Vec<Mail> {
-        if folder != "收件箱" {
-            return Vec::new();
-        }
-        INBOX
-            .iter()
-            .map(|(who, date)| Mail {
-                sender: (*who).to_string(),
-                date: (*date).to_string(),
-            })
-            .collect()
-    }
-
-    fn read_group_members(&self) -> Vec<String> {
-        GROUP_MEMBERS.iter().map(|m| (*m).to_string()).collect()
-    }
-
-    /// 发一封邮件，返回 message_id（算法与 Python mock 同，产物可对照）。
-    /// 真实现要带正文与附件（夹具层会写进 `outbox/`），示例只回 message_id。
-    fn send_mail(&self, to: &str, subject: &str, _body: &str, _attachments: &[String]) -> String {
-        let mut digest: u64 = 0;
-        for ch in to.chars() {
-            digest = (digest * 131 + u64::from(u32::from(ch))) % 0xFFFFFF;
-        }
-        let local = to.split('@').next().unwrap_or(to);
-        let head: String = subject.chars().take(12).filter(|c| *c != ' ').collect();
-        format!("mock-{local}_{digest:06x}-{head}")
-    }
-}
+// 能力层（mock）在库里：`qtcloud_feishu_cli::mock`（对应实验室 capabilities/mock.py）。
 
 // ── 执行器：一轮推一步（对应 runner.py）────────────────────────
 
