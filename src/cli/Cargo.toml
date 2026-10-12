@@ -1,0 +1,18 @@
+[package]
+name = "qtcloud-feishu-cli"
+version = "0.1.0"
+edition = "2024"
+description = "量潮飞书云命令行工具"
+authors = ["QuantTide <opensource@quanttide.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/quanttide/qtcloud-feishu"
+readme = "README.md"
+keywords = ["qtcloud", "quanttide", "feishu", "cli"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "qtcloud-feishu"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
