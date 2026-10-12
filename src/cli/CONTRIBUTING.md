@@ -20,8 +20,8 @@ YAML、数据来自夹具、`scripts/smoke.py` 逐项断言输出。实验室没
 
 ### 共用代码才提炼
 
-同一段代码出现第二个调用方才搬进 `src/`（例如 mock 能力层因样例与后续子命令共用，提炼为
-`src/mock.rs`，经 `src/lib.rs` 暴露）。提炼只搬代码与数据，不改行为：搬完实跑，输出不变。
+同一段代码出现第二个调用方才搬进 `src/`（例如 mock 能力层因样例与后续子命令共用，契约抽为
+`src/capabilities.rs` 的 trait、夹具实现在 `src/mock.rs`，经 `src/lib.rs` 暴露）。提炼只搬代码与数据，不改行为：搬完实跑，输出不变。
 先有样例，再有模块，不预先设计抽象。
 
 ## 跑样例
@@ -38,8 +38,9 @@ cargo run --example qtrecurit -- --step  # 只推一步
 
 1. `cargo fmt --check`
 2. `cargo clippy --all-targets -- -D warnings`
-3. 实跑样例，与实验室参照对得上
-4. 变更记入 `CHANGELOG.md` 的 `[Unreleased]`
+3. `cargo test --all-targets`（示例内测试一并跑）
+4. 实跑样例，与实验室参照对得上
+5. 变更记入 `CHANGELOG.md` 的 `[Unreleased]`
 
 ## 同步拷贝
 

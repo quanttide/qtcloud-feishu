@@ -13,6 +13,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use chrono::{Local, NaiveDate};
+use qtcloud_feishu_cli::capabilities::Capabilities;
 use qtcloud_feishu_cli::mock::Mock;
 use serde::{Deserialize, Serialize};
 
@@ -265,7 +266,7 @@ fn save_state(path: &Path, state: &State) -> std::io::Result<()> {
 }
 
 /// 从原始数据重建每人当前在哪一格（对应 state.py::derive）。
-fn derive(flow: &Flow, cap: &Mock, today: &str) -> State {
+fn derive(flow: &Flow, cap: &impl Capabilities, today: &str) -> State {
     let members: BTreeSet<String> = cap.read_group_members().into_iter().collect();
 
     let mut applied: BTreeMap<String, String> = BTreeMap::new();
@@ -308,11 +309,12 @@ fn days_since(from: &str, to: &str) -> Option<i64> {
     Some((parse(to)? - parse(from)?).num_days())
 }
 
-// 能力层（mock）在库里：`qtcloud_feishu_cli::mock`（对应实验室 capabilities/mock.py）。
+// 能力层在库里：契约 `qtcloud_feishu_cli::capabilities`，夹具实现 `qtcloud_feishu_cli::mock`
+//（对应实验室 capabilities/；换实现不换执行器，签名收 &impl Capabilities）。
 
 // ── 执行器：一轮推一步（对应 runner.py）────────────────────────
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct Report {
     advanced: Vec<String>,
     todos: Vec<String>,
@@ -320,7 +322,13 @@ struct Report {
 }
 
 /// 检查成立吗。没写检查 = 无条件：人这一格就该推。
-fn holds(check: Option<&Check>, cap: &Mock, who: &str, entry: &Entry, today: &str) -> bool {
+fn holds(
+    check: Option<&Check>,
+    cap: &impl Capabilities,
+    who: &str,
+    entry: &Entry,
+    today: &str,
+) -> bool {
     let Some(c) = check else {
         return true;
     };
@@ -341,7 +349,7 @@ fn holds(check: Option<&Check>, cap: &Mock, who: &str, entry: &Entry, today: &st
 }
 
 /// 执行迁移的动作：调能力，返回它的返回值（没有动作返回 None）。
-fn perform(mig: &Migration, cap: &Mock, who: &str) -> Result<Option<String>, String> {
+fn perform(mig: &Migration, cap: &impl Capabilities, who: &str) -> Result<Option<String>, String> {
     let Some(action) = &mig.action else {
         return Ok(None);
     };
@@ -368,7 +376,7 @@ fn perform(mig: &Migration, cap: &Mock, who: &str) -> Result<Option<String>, Str
                 &text("subject")?,
                 &text("body")?,
                 &attachments,
-            );
+            )?;
             Ok(Some(id))
         }
         other => Err(format!(
@@ -380,7 +388,7 @@ fn perform(mig: &Migration, cap: &Mock, who: &str) -> Result<Option<String>, Str
 
 fn advance(
     flow: &Flow,
-    cap: &Mock,
+    cap: &impl Capabilities,
     state: &mut State,
     today: &str,
     step_only: bool,
@@ -442,7 +450,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 读流程 → 读状态（没有就从原始数据重建）→ 推 → 落盘
     let flow: Flow = serde_yaml::from_str(FLOW_YAML)?;
-    let cap = Mock;
+    let cap = Mock::default();
     let state_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("target")
         .join("qtrecurit")
@@ -483,4 +491,97 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  {who:26} {}（{} 起）", entry.state, entry.since);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 造一份场景数据：收件箱 + 群成员都可指定——数据是注入的，不是编译期常量。
+    fn scene(inbox: &[(&str, &str)], members: &[&str]) -> Mock {
+        let folders = BTreeMap::from([(
+            "收件箱".to_string(),
+            inbox
+                .iter()
+                .map(|(e, d)| (e.to_string(), d.to_string()))
+                .collect::<Vec<_>>(),
+        )]);
+        let groups = BTreeMap::from([(
+            "oc_mock".to_string(),
+            members.iter().map(|m| m.to_string()).collect::<Vec<_>>(),
+        )]);
+        Mock::with(folders, groups, "oc_mock")
+    }
+
+    fn flow() -> Flow {
+        serde_yaml::from_str(FLOW_YAML).expect("内嵌流程应能解析")
+    }
+
+    /// 流程最关键的约束：动作先做，失败就不挪格——用注入的失败把它钉住。
+    #[test]
+    fn 动作失败就不挪格() {
+        let flow = flow();
+        let cap = scene(&[("newbie@example.com", "2026-10-12")], &[]);
+
+        // 正常路径先各发一封：留得下记录、断言得出内容
+        let id = cap
+            .send_mail(
+                "a@example.com",
+                "量潮实训基地 · 群二维码",
+                "正文",
+                &["群二维码.png".to_string()],
+            )
+            .expect("正常发信应成功");
+        {
+            let sent = cap.sent.borrow();
+            assert_eq!(sent.len(), 1);
+            assert_eq!(sent[0].message_id, id);
+            assert_eq!(sent[0].attachments, ["群二维码.png"]);
+        }
+
+        cap.fail_send.set(true);
+        let mut state = derive(&flow, &cap, "2026-10-12");
+        let before = state["newbie@example.com"].trail.clone();
+
+        let err = advance(&flow, &cap, &mut state, "2026-10-12", false)
+            .expect_err("发信失败应让这一轮直接报错");
+        assert!(err.contains("mock 注入的失败"), "错误应带上失败原因：{err}");
+        let entry = &state["newbie@example.com"];
+        assert_eq!(entry.state, "投递", "动作失败，格子不该动");
+        assert_eq!(entry.trail, before, "轨迹不该多出一格");
+        assert_eq!(cap.sent.borrow().len(), 1, "失败的那次不该留下已发记录");
+    }
+
+    /// 迟到的扫码照样算（复活）：成员是运行期注入的，不在默认夹具里。
+    #[test]
+    fn 迟到的扫码照样追认() {
+        let flow = flow();
+        let alone = scene(&[("late@example.com", "2026-10-12")], &[]);
+        let mut state = derive(&flow, &alone, "2026-10-12");
+        assert_eq!(state["late@example.com"].state, "投递");
+
+        // 二维码发出十天还没进群 → 无响应
+        let entry = state.get_mut("late@example.com").unwrap();
+        entry.state = "无响应".to_string();
+        entry.since = "2026-10-02".to_string();
+        entry.trail = vec![
+            "投递".to_string(),
+            "二维码已发".to_string(),
+            "无响应".to_string(),
+        ];
+
+        // 后来扫码进群：同一场景重新注入成员（数据是构造进来的，能改）
+        let joined = scene(&[("late@example.com", "2026-10-12")], &["late@example.com"]);
+        let report =
+            advance(&flow, &joined, &mut state, "2026-10-12", false).expect("追认不该失败");
+        assert!(
+            report
+                .advanced
+                .iter()
+                .any(|l| l.contains("无响应 → 已进群")),
+            "应有一条追认：{report:?}"
+        );
+        assert_eq!(state["late@example.com"].state, "已进群");
+        assert_eq!(state["late@example.com"].since, "2026-10-12");
+    }
 }

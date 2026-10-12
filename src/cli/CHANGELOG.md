@@ -8,3 +8,9 @@
 - 新增示例 `qtrecurit`：量潮招聘流程调度器（实验室逻辑的 Rust 重写）。
 - 提炼 `mock` 能力模块（`src/mock.rs`）：示例与后续命令共用的夹具实现，配套库目标 `src/lib.rs`。
 - 新增 `CONTRIBUTING.md`：样例驱动的开发方法。
+
+### Changed
+
+- 能力层重构：契约抽为 `Capabilities` trait（`src/capabilities.rs`），`Mock` 改为构造注入
+  （`Mock::default()` 保实验室夹具），`send_mail` 返回 `Result` 并留存已发记录；示例签名收
+  `&impl Capabilities`，补「动作失败不挪格」「迟到追认」两条测试。
