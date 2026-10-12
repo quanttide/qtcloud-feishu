@@ -13,7 +13,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use chrono::{Local, NaiveDate};
-use qtcloud_feishu_cli::mail::Capabilities;
+use qtcloud_feishu_cli::mail_adapter::MailAdapter;
 use qtcloud_feishu_cli::mock::Mock;
 use serde::{Deserialize, Serialize};
 
@@ -266,7 +266,7 @@ fn save_state(path: &Path, state: &State) -> std::io::Result<()> {
 }
 
 /// 从原始数据重建每人当前在哪一格（对应 state.py::derive）。
-fn derive(flow: &Flow, cap: &impl Capabilities, today: &str) -> State {
+fn derive(flow: &Flow, cap: &impl MailAdapter, today: &str) -> State {
     let members: BTreeSet<String> = cap.read_group_members().into_iter().collect();
 
     let mut applied: BTreeMap<String, String> = BTreeMap::new();
@@ -309,8 +309,8 @@ fn days_since(from: &str, to: &str) -> Option<i64> {
     Some((parse(to)? - parse(from)?).num_days())
 }
 
-// 能力层在库里：契约 `qtcloud_feishu_cli::mail`，夹具实现 `qtcloud_feishu_cli::mock`
-//（对应实验室 capabilities/；换实现不换执行器，签名收 &impl Capabilities）。
+// 能力层在库里：契约 `qtcloud_feishu_cli::mail_adapter`，夹具实现 `qtcloud_feishu_cli::mock`
+//（对应实验室 capabilities/；换实现不换执行器，签名收 &impl MailAdapter）。
 
 // ── 执行器：一轮推一步（对应 runner.py）────────────────────────
 
@@ -324,7 +324,7 @@ struct Report {
 /// 检查成立吗。没写检查 = 无条件：人这一格就该推。
 fn holds(
     check: Option<&Check>,
-    cap: &impl Capabilities,
+    cap: &impl MailAdapter,
     who: &str,
     entry: &Entry,
     today: &str,
@@ -349,7 +349,7 @@ fn holds(
 }
 
 /// 执行迁移的动作：调能力，返回它的返回值（没有动作返回 None）。
-fn perform(mig: &Migration, cap: &impl Capabilities, who: &str) -> Result<Option<String>, String> {
+fn perform(mig: &Migration, cap: &impl MailAdapter, who: &str) -> Result<Option<String>, String> {
     let Some(action) = &mig.action else {
         return Ok(None);
     };
@@ -388,7 +388,7 @@ fn perform(mig: &Migration, cap: &impl Capabilities, who: &str) -> Result<Option
 
 fn advance(
     flow: &Flow,
-    cap: &impl Capabilities,
+    cap: &impl MailAdapter,
     state: &mut State,
     today: &str,
     step_only: bool,

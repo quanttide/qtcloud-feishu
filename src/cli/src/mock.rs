@@ -1,14 +1,14 @@
 //! 能力层的 mock 实现：数据构造时注入，零外部 IO。
 //!
 //! 与实验室 `capabilities/mock.py` 对应，两件事分开放：
-//! 契约在 [`crate::mail`]，这里只管「拿一份数据当能力使」；
+//! 契约在 [`crate::mail_adapter`]，这里只管「拿一份数据当能力使」；
 //! `Mock::default()` 是实验室那套夹具（跨语言对照的 `message_id` 算法也对齐），
 //! 换场景用 [`Mock::with`] 注入另一份数据，不改本文件。
 
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
-use crate::mail::{Capabilities, Mail};
+use crate::mail_adapter::{Mail, MailAdapter};
 
 /// 一封已发出的邮件：mock 把它记下来，调用方与测试能断言「发了什么」。
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -81,7 +81,7 @@ impl Default for Mock {
     }
 }
 
-impl Capabilities for Mock {
+impl MailAdapter for Mock {
     fn read_mail(&self, folder: &str) -> Vec<Mail> {
         self.folders
             .get(folder)
