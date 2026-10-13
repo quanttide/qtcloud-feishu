@@ -32,6 +32,10 @@
 
 ### Changed
 
+- 样例 `examples/qtrecurit.rs`：流程 YAML 提出独立文件 `examples/recruitment.yaml`，源码改用
+  `include_str!` 嵌入（编译期常量，行为不变）；YAML 现可直接编辑、高亮、diff，仍与实验室
+  `tests/fixtures/flows/recruitment.yaml` 同步拷贝。
+
 - `README.md` / `docs/index.md` 退回你自己的原文——此前我改写过一版，描述的是已被撤下的命令面；
   README 另补一节「落盘位置（XDG）」。
 

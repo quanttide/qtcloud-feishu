@@ -13,7 +13,7 @@ YAML、数据来自夹具、`scripts/smoke.py` 逐项断言输出。实验室没
 
 ### 样例再写一遍
 
-把跑通的逻辑重写进 `examples/`，作为可执行的规格：流程 YAML 内嵌样例（与实验室同步拷贝），
+把跑通的逻辑重写进 `examples/`，作为可执行的规格：流程 YAML 与样例同目录（`recruitment.yaml`，与实验室同步拷贝），
 实跑输出与实验室参照逐行对照——`cargo run --example qtrecurit` 与实验室
 `recruitment.cli run --mock --drain` 的输出，除状态落盘路径一行与尾部状态块外应当逐行相同，
 `message_id` 也要一致。对不上就是逻辑写错了，不是对照方式不对。
