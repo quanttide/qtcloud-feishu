@@ -45,6 +45,7 @@ case "$*" in
   *"+triage"*) cat "{f}/triage.json" ;;
   *"+messages"*) cat "{f}/messages.json" ;;
   *"chat-members-list"*) cat "{f}/members.json" ;;
+  *"chats link"*) case "$*" in *permanently*) cat "{f}/chat-link-permanent.json" ;; *) cat "{f}/chat-link.json" ;; esac ;;
   *"+send"*) if [ -f "{f}/fail-send" ]; then echo '{{"ok":false,"error":{{"message":"发信失败"}}}}' >&2; exit 2; fi; cat "{f}/send.json" ;;
   *"+record-list"*) cat "{f}/records.json" ;;
   *"task"*) cat "{f}/tasks.json" ;;
@@ -168,6 +169,16 @@ fn write_fixtures(dir: &std::path::Path) {
     )
     .unwrap();
     fs::write(
+        dir.join("chat-link.json"),
+        r#"{"ok":true,"data":{"share_link":"https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=mock-link-token-0001","expire_time":"1793000000","is_permanent":false}}"#,
+    )
+    .unwrap();
+    fs::write(
+        dir.join("chat-link-permanent.json"),
+        r#"{"ok":true,"data":{"share_link":"https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=mock-link-token-0001","expire_time":"1893456000","is_permanent":true}}"#,
+    )
+    .unwrap();
+    fs::write(
         dir.join("send.json"),
         r#"{"ok":true,"data":{"message_id":"mock-chenmo","thread_id":"t-1"}}"#,
     )
@@ -216,6 +227,19 @@ pub const DEFINITIONS: &str = r#"定义:
     出:
       行: 记录.items
       字段: {邮箱: "fields.email|fields.邮箱", 提交时间: "fields.submitted_at|fields.提交时间"}
+  - 名称: 发邀请信
+    说明: 先取群分享链接，再把它填进正文发出去
+    步骤:
+      - 动作: im_chat_link
+        参数: {chat_id: "{{群}}"}
+        as: 链接
+      - 动作: mail_send
+        参数:
+          mailbox: "{{邮箱}}"
+          to: "{{候选人.邮箱}}"
+          subject: 量潮实训基地 · 群二维码
+          body: "你好，扫码直接进群（群二维码见附件）。也可以点这个链接进群：{{链接.share_link}}"
+    出: {字段: {邮件id: message_id}}
   - 名称: 发群二维码
     步骤:
       - 动作: mail_send

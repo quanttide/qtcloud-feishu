@@ -1,4 +1,4 @@
-//! 基础单元：十三个动作的登记，以及参数怎么变成命令行。
+//! 基础单元：十四个动作的登记，以及参数怎么变成命令行。
 
 mod fake_lark_cli;
 
@@ -8,11 +8,11 @@ use serde_json::{Map, json};
 #[test]
 fn 动作名不重复() {
     let actions: Vec<&resources::Action> = resources::all().collect();
-    assert_eq!(actions.len(), 13, "基础单元是十三个动作");
+    assert_eq!(actions.len(), 14, "基础单元是十四个动作");
     let mut names: Vec<&str> = actions.iter().map(|a| a.name).collect();
     names.sort_unstable();
     names.dedup();
-    assert_eq!(names.len(), 13);
+    assert_eq!(names.len(), 14);
 }
 
 #[test]
@@ -67,6 +67,46 @@ fn 按登记把原样响应落盘() {
     )
     .unwrap();
     assert_eq!(raw["ok"], true, "落盘的是未解信封的原样响应");
+}
+
+#[test]
+fn 取群链接按登记拼出命令行() {
+    let fake = fake_lark_cli::Fake::new("res_chat_link");
+    let backend = fake.backend();
+    let mut params = Map::new();
+    params.insert("chat_id".to_string(), json!("oc_调用方给的"));
+    let payload = backend.call("im_chat_link", params).unwrap();
+    assert!(
+        payload.value()["share_link"]
+            .as_str()
+            .unwrap()
+            .contains("link_token=")
+    );
+
+    let argv = &fake.argv_log()[0];
+    assert!(argv.contains("im chats link"), "{argv}");
+    assert!(argv.contains("--chat-id oc_调用方给的"), "{argv}");
+}
+
+#[test]
+fn 取群链接可以要求长期有效() {
+    let fake = fake_lark_cli::Fake::new("res_chat_link_permanent");
+    let backend = fake.backend();
+    let mut params = Map::new();
+    params.insert("chat_id".to_string(), json!("oc_x"));
+    params.insert("validity_period".to_string(), json!("permanently"));
+    let payload = backend.call("im_chat_link", params).unwrap();
+    assert_eq!(
+        payload.value()["is_permanent"],
+        true,
+        "夹具会跟着请求体回话"
+    );
+
+    let argv = &fake.argv_log()[0];
+    assert!(
+        argv.contains("--data {\"validity_period\":\"permanently\"}"),
+        "{argv}"
+    );
 }
 
 #[test]

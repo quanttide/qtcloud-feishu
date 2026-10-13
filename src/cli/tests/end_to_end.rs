@@ -105,6 +105,38 @@ fn 表列名两种写法都认() {
 }
 
 #[test]
+fn 两步定义_先取链接再填进正文() {
+    let fake = Fake::new("e2e_chat_link");
+    let engine = engine_of(&fake);
+    // 候选人是个嵌套的上下文（`{{候选人.邮箱}}` 逐层取），单独插进去
+    let mut ctx = context(&[("邮箱", "hr@example.com")]);
+    ctx.insert("候选人".to_string(), json!({"邮箱": "chenmo@example.com"}));
+    let outcome = engine.call("发邀请信", &ctx).unwrap();
+    assert!(
+        outcome.single.contains_key("邮件id"),
+        "{:?}",
+        outcome.single
+    );
+
+    let log = fake.argv_log();
+    let link = log
+        .iter()
+        .find(|line| line.contains("chats link"))
+        .expect("该先取一次群链接");
+    assert!(link.contains("--chat-id"), "取链接要带群：{link}");
+    let send = log
+        .iter()
+        .find(|line| line.contains("mail +send"))
+        .expect("该发一封");
+    assert!(
+        send.contains("link_token=mock-link-token-0001"),
+        "正文里该填进链接：{send}"
+    );
+    assert!(send.contains("扫码直接进群"), "模板原话要留着：{send}");
+    assert!(send.contains("--to chenmo@example.com"), "{send}");
+}
+
+#[test]
 fn 从原始数据重建后推一轮() {
     let fake = Fake::new("e2e_flow");
     let engine = engine_of(&fake);

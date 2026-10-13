@@ -4,6 +4,13 @@
 
 ### Added
 
+- 基础单元第 14 个动作 `im_chat_link`（`im chats link`，取群分享链接）：`validity_period` 走
+  `--data '{"validity_period": "…"}'`（`week` / `year` / `permanently`）。边界（实测）：
+  调用者得是群成员；**外部群机器人身份取不到**（API 232033），要么用用户身份。
+  判据加两条：按登记拼出命令行、要永久有效时假 lark-cli 跟着回永久那份。
+- 端到端加一条：两步定义「先取群链接（`as: 链接`）→ 发信（正文里填 `{{链接.share_link}}`）」，
+  用假 lark-cli 记下的 argv 证明链接真的填进了正文。
+
 - `src/paths.rs`：本机落盘位置按 XDG 基目录规范取——镜像（`raw/` 与 `cursor/`）落
   `<XDG_DATA_HOME>/qtcloud-feishu/`、流程状态落 `<XDG_STATE_HOME>/qtcloud-feishu/<名字>.json`、
   定义与流程落 `<XDG_CONFIG_HOME>/qtcloud-feishu/<名字>.yaml`、可重建产物落 `<XDG_CACHE_HOME>/qtcloud-feishu/`。
