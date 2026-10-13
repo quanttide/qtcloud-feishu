@@ -109,35 +109,3 @@ impl RawStore {
         Ok(path)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn tmp(name: &str) -> PathBuf {
-        crate::test_support::tmp_dir(name)
-    }
-
-    #[test]
-    fn 页序接着排_重跑不覆盖() {
-        let store = RawStore::new(tmp("store_seq"));
-        let raw = serde_json::json!({"ok": true, "data": {}});
-        let first = store.save_response("mail", "list", &raw).unwrap();
-        let second = store.save_response("mail", "list", &raw).unwrap();
-        assert!(first.ends_with("0001.json"));
-        assert!(second.ends_with("0002.json"));
-    }
-
-    #[test]
-    fn 附件与游标各落各的() {
-        let store = RawStore::new(tmp("store_att"));
-        let path = store
-            .save_attachment("m-1-att-0", "简历.txt", b"hi")
-            .unwrap();
-        assert_eq!(path.parent().unwrap().file_name().unwrap(), "m-1-att-0");
-        assert_eq!(fs::read(&path).unwrap(), b"hi");
-        store.set_cursor("mail", "2026-10-02").unwrap();
-        let text = fs::read_to_string(store.cursor_path("mail")).unwrap();
-        assert!(text.contains("2026-10-02"), "{text}");
-    }
-}

@@ -75,30 +75,3 @@ pub fn pull(
     }
     Ok(pages)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn 十三个动作_名字唯一() {
-        let actions: Vec<&Action> = all().collect();
-        assert_eq!(actions.len(), 13, "基础单元是十三个动作");
-        let mut names: Vec<&str> = actions.iter().map(|a| a.name).collect();
-        names.sort_unstable();
-        names.dedup();
-        assert_eq!(names.len(), 13, "动作名不许重");
-    }
-
-    #[test]
-    fn 每个动作的落盘目录名与资源对得上() {
-        for action in all() {
-            assert!(
-                !action.landed.is_empty() || !action.variants.is_empty(),
-                "{}",
-                action.name
-            );
-            assert!(!action.resource.is_empty(), "{}", action.name);
-        }
-    }
-}

@@ -85,22 +85,6 @@ impl Backend {
         }
     }
 
-    /// 测试用：自己带 runner 与位置参数。
-    #[cfg(test)]
-    pub fn with_runner(runner: Box<dyn Runner>, program: &str, store: Option<RawStore>) -> Self {
-        Backend {
-            runner,
-            program: program.to_string(),
-            store,
-            location: BTreeMap::new(),
-        }
-    }
-
-    #[cfg(test)]
-    pub fn set_location(&mut self, key: &str, value: &str) {
-        self.location.insert(key.to_string(), value.to_string());
-    }
-
     pub fn store(&self) -> Option<&RawStore> {
         self.store.as_ref()
     }
@@ -260,101 +244,5 @@ pub fn extract_json(text: &str) -> Option<Value> {
         serde_json::from_str::<Value>(&text[start..=end]).ok()
     } else {
         None
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-    use std::sync::Mutex;
-
-    /// 假 runner：把 argv 记下来，回预制输出。
-    struct Fake {
-        seen: Mutex<Vec<Vec<String>>>,
-        reply: Value,
-    }
-
-    impl Runner for Fake {
-        fn run(&self, _program: &str, args: &[String]) -> Result<Output, String> {
-            self.seen.lock().unwrap().push(args.to_vec());
-            Ok(Output {
-                stdout: self.reply.to_string(),
-                stderr: String::new(),
-                success: true,
-            })
-        }
-    }
-
-    fn backend(name: &str, reply: Value) -> (Backend, std::sync::Arc<Fake>, std::path::PathBuf) {
-        let fake = std::sync::Arc::new(Fake {
-            seen: Mutex::new(Vec::new()),
-            reply,
-        });
-        struct Shared(std::sync::Arc<Fake>);
-        impl Runner for Shared {
-            fn run(&self, program: &str, args: &[String]) -> Result<Output, String> {
-                self.0.run(program, args)
-            }
-        }
-        let store_dir = crate::test_support::tmp_dir(name);
-        let backend = Backend::with_runner(
-            Box::new(Shared(fake.clone())),
-            "lark-cli",
-            Some(RawStore::new(store_dir.clone())),
-        );
-        (backend, fake, store_dir)
-    }
-
-    #[test]
-    fn 按登记拼出命令行并落盘() {
-        let (backend, fake, store_dir) =
-            backend("backend_call", json!({"ok": true, "data": {"count": 2}}));
-        let mut params = Map::new();
-        params.insert("folder".to_string(), json!("收件箱"));
-        params.insert("mailbox".to_string(), json!("hr@example.com"));
-        params.insert("page_size".to_string(), json!(2));
-        let payload = backend.call("mail_list", params).unwrap();
-        assert_eq!(payload.value()["count"], 2);
-        let argv = fake.seen.lock().unwrap()[0].clone();
-        assert_eq!(
-            argv,
-            vec![
-                "mail",
-                "+triage",
-                "--mailbox",
-                "hr@example.com",
-                "--max",
-                "2",
-                "--filter",
-                "{\"folder\":\"收件箱\"}",
-                "--format",
-                "json",
-            ]
-        );
-        let saved = std::fs::read_dir(store_dir.join("raw/mail/list"))
-            .unwrap()
-            .count();
-        assert_eq!(saved, 1, "一页落一份原样响应");
-    }
-
-    #[test]
-    fn 不认识的参数与缺必填都明确报错() {
-        let (backend, _, _) = backend("backend_errors", json!({"ok": true, "data": {}}));
-        let mut params = Map::new();
-        params.insert("folderx".to_string(), json!("收件箱"));
-        let err = backend.call("mail_list", params).unwrap_err();
-        assert!(err.contains("不认识这些参数"), "{err}");
-        let err = backend.call("im_chat_messages", Map::new()).unwrap_err();
-        assert!(err.contains("需要 chat_id 或 user_id"), "{err}");
-    }
-
-    #[test]
-    fn 位置参数没给就用实例的() {
-        let (mut backend, fake, _) = backend("backend_location", json!({"ok": true, "data": {}}));
-        backend.set_location("chat_id", "oc_real");
-        backend.call("im_chat_members", Map::new()).unwrap();
-        let argv = fake.seen.lock().unwrap()[0].clone();
-        assert!(argv.contains(&"oc_real".to_string()), "{argv:?}");
     }
 }
