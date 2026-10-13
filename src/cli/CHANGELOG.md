@@ -11,6 +11,7 @@
 
 ### Changed
 
+- 重写 `docs/index.md`：CLI 文档入口，写明目标、设计哲学落点与形态差距。
 - Mail 适配器化：契约模块再改名 mail → `src/mail_adapter.rs`，trait `Capabilities` →
   `MailAdapter`；行为与跨语言对照不动。
 - 能力层重构：契约抽为 `Capabilities` trait（`src/mail.rs`，由 capabilities 改名而来），`Mock` 改为构造注入
