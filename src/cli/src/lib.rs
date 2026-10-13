@@ -5,6 +5,7 @@
 //! engine.rs   串联器：读定义，把定义展开成一串基础单元的活动
 //! flow.rs     执行器：读流程与定义推格（检查成立才推、动作先做失败不挪格）
 //! store.rs    落盘契约：raw/<资源>/<动作>/<页序>.json + 附件 + 游标
+//! paths.rs   本机放哪：按 XDG 基目录规范取 data / state / config / cache
 //! backend.rs  后端：拼 argv、跑 lark-cli、解信封、落盘
 //! ```
 //!
@@ -14,5 +15,6 @@
 pub mod backend;
 pub mod engine;
 pub mod flow;
+pub mod paths;
 pub mod resources;
 pub mod store;

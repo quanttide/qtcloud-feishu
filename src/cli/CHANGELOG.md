@@ -4,6 +4,12 @@
 
 ### Added
 
+- `src/paths.rs`：本机落盘位置按 XDG 基目录规范取——镜像（`raw/` 与 `cursor/`）落
+  `<XDG_DATA_HOME>/qtcloud-feishu/`、流程状态落 `<XDG_STATE_HOME>/qtcloud-feishu/<名字>.json`、
+  定义与流程落 `<XDG_CONFIG_HOME>/qtcloud-feishu/<名字>.yaml`、可重建产物落 `<XDG_CACHE_HOME>/qtcloud-feishu/`。
+  变量没设或为空用缺省、给了相对路径当没设、`HOME` 也缺就报错（不猜）。判据 `tests/paths.rs` 七项；
+  后端加 `Backend::with_mirror()`（不给 `store_root` 仍是不落盘的纯读）。
+
 - **基础单元**（`src/resources/`）：六资源十三个动作按飞书资源分文件（`mail.rs` / `im.rs` /
   `vc.rs` / `task.rs` / `doc.rs` / `base.rs`），动作登记就是契约——命令、参数、必填、落盘名各写一处，
   后端按名字一次派发，不逐一写方法
@@ -18,6 +24,9 @@
   （真二进制 + 测试自己生成的假 lark-cli 与夹具）
 
 ### Changed
+
+- `README.md` / `docs/index.md` 退回你自己的原文——此前我改写过一版，描述的是已被撤下的命令面；
+  README 另补一节「落盘位置（XDG）」。
 
 - 样例 `examples/qtrecurit.rs`：动作可以先「先取」一样东西再执行——发群二维码之前先取群邀请链接，
   按 `{{邀请链接}}` 填进邮件正文模板（模板仍在样例的流程里）。契约加第四种能力 `chat_link`

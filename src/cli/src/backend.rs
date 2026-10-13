@@ -12,6 +12,8 @@
 //!
 //! 值全部从参数与环境来，代码里不写任何邮箱、群 id、人名、关键词：
 //! `LARK_CLI` / `LARK_MAILBOX` / `LARK_BASE_TOKEN` / `LARK_TABLE_ID` / `LARK_CHAT_ID`。
+//!
+//! 落盘根不给就不落盘（纯读）；要缺省位置用 [`Backend::with_mirror`]，目录规则见 [`crate::paths`]。
 
 use std::collections::BTreeMap;
 use std::process::Command;
@@ -83,6 +85,11 @@ impl Backend {
             store: store_root.map(RawStore::new),
             location,
         }
+    }
+
+    /// 用 XDG 缺省的镜像根建后端（`~/.local/share/qtcloud-feishu` 一类）。
+    pub fn with_mirror(program: Option<String>) -> Result<Self, String> {
+        Ok(Backend::new(program, Some(crate::paths::mirror_dir()?)))
     }
 
     pub fn store(&self) -> Option<&RawStore> {
