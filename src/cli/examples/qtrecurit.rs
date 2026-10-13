@@ -4,6 +4,7 @@
 //! 流程是数据（YAML 内嵌本文件，改流程改这段字串），执行器读它推格——
 //! 检查成立才推、动作先做失败不挪格、人 / 半自动只记待办。
 //! 能力层（契约 + mock 夹具）就近放在本文件，与实验室 capabilities/ 对应，示例自包含。
+//! 发群二维码这条动作用「先取」在发信之前取一次群邀请链接，填进邮件正文模板。
 //!
 //! 跑法（在 `src/cli` 下）：
 //!     cargo run --example qtrecurit            # 一轮推到底，再打印每人在哪格
@@ -29,6 +30,8 @@ const FLOW_YAML: &str = r#"# 招聘流程定义
 # 检查：只有「执行者：系统」的迁移需要写检查——那是一段机器可判的条件，
 # 成立才推。执行者是人或半自动的，执行器不代劳，只把它记成待办。
 # 动作：迁移要真做的事（调一个能力），推过去之前先执行，失败就不挪格。
+#      动作可以用「先取」在自己之前多取几样东西（如群邀请链接）：每样按「能力」调一次，
+#      取到的值按 as 起名，参数模板里用 {{名字}} 引用。
 #      不写动作的迁移照旧只挪格（副作用那句话仍留给人读）。
 #
 # 依据：qtrecurit-private/docs/handbook/workflow.md（2026-08 按实际运行更新）
@@ -75,10 +78,15 @@ const FLOW_YAML: &str = r#"# 招聘流程定义
     执行者: 系统
     动作:
       能力: send_mail
+      先取:                     # 发信之前先把群邀请链接取来，填进下面的正文模板
+        - 能力: chat_link
+          as: 邀请链接
       参数:
         to: "{{候选人.邮箱}}"
         subject: 量潮实训基地 · 群二维码
-        body: 你好，扫码直接进群（群二维码见附件）。
+        body: |-
+          你好，扫码直接进群（群二维码见附件）。
+          也可以点这个链接进群：{{邀请链接}}
         attachments:
           - 群二维码.png
     副作用: 记发送时间
@@ -227,8 +235,22 @@ struct Check {
 struct Action {
     #[serde(rename = "能力")]
     capability: String,
+    /// 执行本动作之前先取的值：各调一次能力，按 `as` 起名，供参数模板引用。
+    #[serde(rename = "先取", default)]
+    fetch: Vec<Fetch>,
     #[serde(rename = "参数")]
     params: BTreeMap<String, Value>,
+}
+
+/// 动作之前先取的一样东西（如群邀请链接）。
+#[derive(Deserialize)]
+struct Fetch {
+    #[serde(rename = "能力")]
+    capability: String,
+    #[serde(rename = "参数", default)]
+    params: BTreeMap<String, Value>,
+    #[serde(rename = "as")]
+    as_name: String,
 }
 
 /// 动作参数值：字符串或字符串列表（流程里只用到这两样）。
@@ -330,7 +352,7 @@ mod mail_adapter {
         pub date: String,
     }
 
-    /// 流程要用到的三种能力。参数与返回值都用普通数据，不给调用方任何平台概念。
+    /// 流程要用到的四种能力。参数与返回值都用普通数据，不给调用方任何平台概念。
     pub trait MailAdapter {
         /// 读某个文件夹的邮件。读哪个文件夹由调用方决定，能力层不做取舍；
         /// 数据里没构造过的文件夹读出来是空——是「没数据」，不是「不该读」。
@@ -338,6 +360,14 @@ mod mail_adapter {
 
         /// 读本实例所指群的成员，返回邮箱。
         fn read_group_members(&self) -> Vec<String>;
+
+        /// 取本实例所指群的邀请链接（群分享链接）。
+        ///
+        /// 真实现是 `lark-cli im chats link --chat-id …`（API `POST /open-apis/im/v1/chats/:chat_id/link`，
+        /// 返回 `share_link` / `expire_time` / `is_permanent`，可指定 `validity_period`）。
+        /// 两条边界已知：调用者得是群成员，且**外部群机器人身份取不到**（232033：
+        /// 机器人无权管理外部群）——实训基地群是外部群，真取要用 HR 的用户身份。
+        fn chat_link(&self) -> Result<String, String>;
 
         /// 发一封邮件，返回 `message_id`；失败返回错误消息，执行器据此不挪格。
         fn send_mail(
@@ -454,6 +484,14 @@ mod mock {
             self.groups.get(&self.chat_id).cloned().unwrap_or_default()
         }
 
+        fn chat_link(&self) -> Result<String, String> {
+            // 真链接形如 https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=<uuid>
+            Ok(format!(
+                "https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=mock-{}",
+                self.chat_id
+            ))
+        }
+
         fn send_mail(
             &self,
             to: &str,
@@ -529,9 +567,29 @@ fn perform(mig: &Migration, cap: &impl MailAdapter, who: &str) -> Result<Option<
     let Some(action) = &mig.action else {
         return Ok(None);
     };
+    // 先取：动作之前多跑一次能力，取到的值按 as 起名，填进参数模板（如群邀请链接）
+    let mut vars: BTreeMap<String, String> = BTreeMap::new();
+    for fetch in &action.fetch {
+        if !fetch.params.is_empty() {
+            return Err(format!(
+                "迁移 {}→{} 的先取「{}」还不接参数（参数由本实例给）",
+                mig.from, mig.to, fetch.capability
+            ));
+        }
+        let value = match fetch.capability.as_str() {
+            "chat_link" => cap.chat_link()?,
+            other => {
+                return Err(format!(
+                    "迁移 {}→{} 的先取里没有能力「{other}」",
+                    mig.from, mig.to
+                ));
+            }
+        };
+        vars.insert(fetch.as_name.clone(), value);
+    }
     let text = |key: &str| -> Result<String, String> {
         match action.params.get(key) {
-            Some(Value::Text(t)) => Ok(t.replace("{{候选人.邮箱}}", who)),
+            Some(Value::Text(t)) => Ok(fill(t, who, &vars)),
             _ => Err(format!(
                 "迁移 {}→{} 的动作 {} 缺字符串参数 {key}",
                 mig.from, mig.to, action.capability
@@ -541,10 +599,7 @@ fn perform(mig: &Migration, cap: &impl MailAdapter, who: &str) -> Result<Option<
     match action.capability.as_str() {
         "send_mail" => {
             let attachments = match action.params.get("attachments") {
-                Some(Value::List(items)) => items
-                    .iter()
-                    .map(|s| s.replace("{{候选人.邮箱}}", who))
-                    .collect(),
+                Some(Value::List(items)) => items.iter().map(|s| fill(s, who, &vars)).collect(),
                 _ => Vec::new(),
             };
             let id = cap.send_mail(
@@ -560,6 +615,15 @@ fn perform(mig: &Migration, cap: &impl MailAdapter, who: &str) -> Result<Option<
             mig.from, mig.to
         )),
     }
+}
+
+/// 参数模板取值：`{{候选人.邮箱}}` 与「先取」起的名字（如 `{{邀请链接}}`）。
+fn fill(template: &str, who: &str, vars: &BTreeMap<String, String>) -> String {
+    let mut text = template.replace("{{候选人.邮箱}}", who);
+    for (name, value) in vars {
+        text = text.replace(&format!("{{{{{name}}}}}"), value);
+    }
+    text
 }
 
 fn advance(
@@ -726,6 +790,32 @@ mod tests {
         assert_eq!(entry.state, "投递", "动作失败，格子不该动");
         assert_eq!(entry.trail, before, "轨迹不该多出一格");
         assert_eq!(cap.sent.borrow().len(), 1, "失败的那次不该留下已发记录");
+    }
+
+    /// 发信之前先取群邀请链接，并按 `{{邀请链接}}` 填进正文模板。
+    #[test]
+    fn 发信前先取邀请链接并填进正文() {
+        let flow = flow();
+        let cap = scene(&[("newbie@example.com", "2026-10-12")], &[]);
+        let mut state = derive(&flow, &cap, "2026-10-12");
+
+        advance(&flow, &cap, &mut state, "2026-10-12", false).expect("应能推一步");
+
+        let sent = cap.sent.borrow();
+        assert_eq!(sent.len(), 1, "投递那位该收到一封");
+        let mail = &sent[0];
+        assert_eq!(mail.subject, "量潮实训基地 · 群二维码");
+        assert!(
+            mail.body.contains("link_token=mock-oc_mock"),
+            "正文里该填进邀请链接：{}",
+            mail.body
+        );
+        assert!(
+            mail.body.contains("扫码直接进群"),
+            "模板原话要留着：{}",
+            mail.body
+        );
+        assert_eq!(mail.attachments, ["群二维码.png"], "二维码附件照旧");
     }
 
     /// 迟到的扫码照样算（复活）：成员是运行期注入的，不在默认夹具里。

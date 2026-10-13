@@ -1,18 +1,18 @@
-//! 基础单元：十三个动作的登记，以及"参数怎么变成命令行"。
+//! 基础单元：十三个动作的登记，以及参数怎么变成命令行。
 
-mod support;
+mod fake_lark_cli;
 
 use qtcloud_feishu_cli::resources;
 use serde_json::{Map, json};
 
 #[test]
-fn 十三个动作_名字唯一() {
+fn 动作名不重复() {
     let actions: Vec<&resources::Action> = resources::all().collect();
     assert_eq!(actions.len(), 13, "基础单元是十三个动作");
     let mut names: Vec<&str> = actions.iter().map(|a| a.name).collect();
     names.sort_unstable();
     names.dedup();
-    assert_eq!(names.len(), 13, "动作名不许重");
+    assert_eq!(names.len(), 13);
 }
 
 #[test]
@@ -28,16 +28,14 @@ fn 每个动作都说清资源与落盘名() {
 }
 
 #[test]
-fn 参数按登记拼成命令行_并落一份原样响应() {
-    let fake = support::Fake::new("res_argv");
+fn 按登记拼出命令行() {
+    let fake = fake_lark_cli::Fake::new("res_argv");
     let backend = fake.backend();
     let mut params = Map::new();
     params.insert("folder".to_string(), json!("收件箱"));
     params.insert("mailbox".to_string(), json!("hr@example.com"));
     params.insert("page_size".to_string(), json!(2));
-
-    let payload = backend.call("mail_list", params).unwrap();
-    assert_eq!(payload.value()["count"], 2);
+    backend.call("mail_list", params).unwrap();
 
     let argv = &fake.argv_log()[0];
     for expected in [
@@ -49,9 +47,21 @@ fn 参数按登记拼成命令行_并落一份原样响应() {
     ] {
         assert!(argv.contains(expected), "命令行里该有 {expected}：{argv}");
     }
+}
 
-    let files = support::landed(&fake.store());
-    assert_eq!(files, vec!["raw/mail/list/0001.json"]);
+#[test]
+fn 按登记把原样响应落盘() {
+    let fake = fake_lark_cli::Fake::new("res_landed");
+    let backend = fake.backend();
+    let mut params = Map::new();
+    params.insert("folder".to_string(), json!("收件箱"));
+    let payload = backend.call("mail_list", params).unwrap();
+    assert_eq!(payload.value()["count"], 2);
+
+    assert_eq!(
+        fake_lark_cli::landed(&fake.store()),
+        vec!["raw/mail/list/0001.json"]
+    );
     let raw: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(fake.store().join("raw/mail/list/0001.json")).unwrap(),
     )
@@ -60,20 +70,17 @@ fn 参数按登记拼成命令行_并落一份原样响应() {
 }
 
 #[test]
-fn task_三种取法各换命令段与落盘目录() {
-    let fake = support::Fake::new("res_task");
+fn 任务动作的三种取法各换命令段与落盘目录() {
+    let fake = fake_lark_cli::Fake::new("res_task");
     let backend = fake.backend();
-    for (scope, landed) in [
-        ("mine", "mine"),
-        ("related", "related"),
-        ("tasklists", "tasklists"),
-    ] {
+    for scope in ["mine", "related", "tasklists"] {
         let mut params = Map::new();
         params.insert("scope".to_string(), json!(scope));
         backend.call("task_list", params).unwrap();
+        let expected = format!("raw/task/{scope}/0001.json");
         assert!(
-            support::landed(&fake.store()).contains(&format!("raw/task/{landed}/0001.json")),
-            "scope={scope} 该落到 raw/task/{landed}/"
+            fake_lark_cli::landed(&fake.store()).contains(&expected),
+            "scope={scope} 该落到 {expected}"
         );
     }
     let log = fake.argv_log();
