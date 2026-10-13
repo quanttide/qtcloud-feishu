@@ -3,6 +3,7 @@
 //! 与 `examples/quanttide-feishu-lab` 的 `flow/state/runner` 一一对应：
 //! 流程是数据（YAML 内嵌本文件，改流程改这段字串），执行器读它推格——
 //! 检查成立才推、动作先做失败不挪格、人 / 半自动只记待办。
+//! 能力层（契约 + mock 夹具）就近放在本文件，与实验室 capabilities/ 对应，示例自包含。
 //!
 //! 跑法（在 `src/cli` 下）：
 //!     cargo run --example qtrecurit            # 一轮推到底，再打印每人在哪格
@@ -13,9 +14,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use chrono::{Local, NaiveDate};
-use qtcloud_feishu_cli::mail_adapter::MailAdapter;
-use qtcloud_feishu_cli::mock::Mock;
 use serde::{Deserialize, Serialize};
+
+use crate::mail_adapter::MailAdapter;
+use crate::mock::Mock;
 
 /// 流程定义：与实验室 `tests/fixtures/flows/recruitment.yaml` 同步拷贝。
 const FLOW_YAML: &str = r#"# 招聘流程定义
@@ -309,8 +311,182 @@ fn days_since(from: &str, to: &str) -> Option<i64> {
     Some((parse(to)? - parse(from)?).num_days())
 }
 
-// 能力层在库里：契约 `qtcloud_feishu_cli::mail_adapter`，夹具实现 `qtcloud_feishu_cli::mock`
-//（对应实验室 capabilities/；换实现不换执行器，签名收 &impl MailAdapter）。
+// ── 能力层：契约与夹具实现（对应实验室 capabilities/）────────────
+// 换实现不换执行器，签名收 `&impl MailAdapter`；契约说流程词汇，
+// 平台词汇（folder id、命令行参数）只活在实现里。
+
+mod mail_adapter {
+    //! Mail 适配器：流程与邮件能力之间的适配契约。
+    //!
+    //! 适配器的分工——契约说流程词汇（文件夹、候选人邮箱），平台词汇（folder id、
+    //! 命令行参数）只活在实现里；YAML 里只出现能力名，不出现任何命令。
+    //! 换实现（mock / 将来的 lark-cli 子进程）不动执行器。方法与实验室 Python
+    //! 能力层的同名能力一一对应，跨语言对照靠它。
+
+    /// 一封邮件（流程用到的字段）。
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct Mail {
+        pub sender: String,
+        pub date: String,
+    }
+
+    /// 流程要用到的三种能力。参数与返回值都用普通数据，不给调用方任何平台概念。
+    pub trait MailAdapter {
+        /// 读某个文件夹的邮件。读哪个文件夹由调用方决定，能力层不做取舍；
+        /// 数据里没构造过的文件夹读出来是空——是「没数据」，不是「不该读」。
+        fn read_mail(&self, folder: &str) -> Vec<Mail>;
+
+        /// 读本实例所指群的成员，返回邮箱。
+        fn read_group_members(&self) -> Vec<String>;
+
+        /// 发一封邮件，返回 `message_id`；失败返回错误消息，执行器据此不挪格。
+        fn send_mail(
+            &self,
+            to: &str,
+            subject: &str,
+            body: &str,
+            attachments: &[String],
+        ) -> Result<String, String>;
+    }
+}
+
+mod mock {
+    //! 能力层的 mock 实现：数据构造时注入，零外部 IO。
+    //!
+    //! 与实验室 `capabilities/mock.py` 对应，两件事分开放：
+    //! 契约在 [`crate::mail_adapter`]，这里只管「拿一份数据当能力使」；
+    //! `Mock::default()` 是实验室那套夹具（跨语言对照的 `message_id` 算法也对齐），
+    //! 换场景用 [`Mock::with`] 注入另一份数据，不改本文件。
+
+    use std::cell::{Cell, RefCell};
+    use std::collections::BTreeMap;
+
+    use crate::mail_adapter::{Mail, MailAdapter};
+
+    /// 一封已发出的邮件：mock 把它记下来，调用方与测试能断言「发了什么」。
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct SentMail {
+        pub to: String,
+        pub subject: String,
+        pub body: String,
+        pub attachments: Vec<String>,
+        pub message_id: String,
+    }
+
+    /// 可注入数据的能力 mock。
+    ///
+    /// 夹具不再是编译期常量：文件夹、群成员、读哪个群都由构造给，
+    /// 同一进程里可以有多套互不相干的数据，测试之间互不污染。
+    pub struct Mock {
+        /// 文件夹名 → 邮件（发件人, 日期）
+        pub folders: BTreeMap<String, Vec<(String, String)>>,
+        /// 群 id → 成员邮箱
+        pub groups: BTreeMap<String, Vec<String>>,
+        /// 本实例读哪个群（与真实现把 chat_id 放构造参数的做法对齐，方法签名不带群概念）
+        pub chat_id: String,
+        /// 已发出的邮件（对应 Python 夹具层写进 `outbox/` 的那叠文件）
+        pub sent: RefCell<Vec<SentMail>>,
+        /// 置真时 `send_mail` 一律失败：用来测「动作先做，失败不挪格」
+        pub fail_send: Cell<bool>,
+    }
+
+    impl Mock {
+        /// 任意数据构造：换场景换一份数据，不改这个文件。
+        pub fn with(
+            folders: BTreeMap<String, Vec<(String, String)>>,
+            groups: BTreeMap<String, Vec<String>>,
+            chat_id: &str,
+        ) -> Self {
+            Self {
+                folders,
+                groups,
+                chat_id: chat_id.to_string(),
+                sent: RefCell::new(Vec::new()),
+                fail_send: Cell::new(false),
+            }
+        }
+    }
+
+    impl Default for Mock {
+        /// 实验室夹具：收件箱四封投递 + 实训基地群三个成员。
+        fn default() -> Self {
+            let folders = BTreeMap::from([(
+                "收件箱".to_string(),
+                vec![
+                    ("chenmo@example.com".to_string(), "2026-10-02".to_string()),
+                    (
+                        "linyizhou@example.com".to_string(),
+                        "2026-10-03".to_string(),
+                    ),
+                    ("suxiao@example.com".to_string(), "2026-10-03".to_string()),
+                    ("herui@example.com".to_string(), "2026-10-04".to_string()),
+                ],
+            )]);
+            let groups = BTreeMap::from([(
+                "oc_mock".to_string(),
+                vec![
+                    "herui@example.com".to_string(),
+                    "yuanyu@example.com".to_string(),
+                    "hyacinth@example.com".to_string(),
+                ],
+            )]);
+            Self::with(folders, groups, "oc_mock")
+        }
+    }
+
+    impl MailAdapter for Mock {
+        fn read_mail(&self, folder: &str) -> Vec<Mail> {
+            self.folders
+                .get(folder)
+                .map(|mails| {
+                    mails
+                        .iter()
+                        .map(|(sender, date)| Mail {
+                            sender: sender.clone(),
+                            date: date.clone(),
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        }
+
+        fn read_group_members(&self) -> Vec<String> {
+            self.groups.get(&self.chat_id).cloned().unwrap_or_default()
+        }
+
+        fn send_mail(
+            &self,
+            to: &str,
+            subject: &str,
+            body: &str,
+            attachments: &[String],
+        ) -> Result<String, String> {
+            if self.fail_send.get() {
+                return Err(format!("mock 注入的失败：发给 {to} 的「{subject}」"));
+            }
+            let message_id = message_id(to, subject);
+            self.sent.borrow_mut().push(SentMail {
+                to: to.to_string(),
+                subject: subject.to_string(),
+                body: body.to_string(),
+                attachments: attachments.to_vec(),
+                message_id: message_id.clone(),
+            });
+            Ok(message_id)
+        }
+    }
+
+    /// `message_id` 生成：算法与 Python mock 同步，跨语言对照靠它，动它等于断对照。
+    fn message_id(to: &str, subject: &str) -> String {
+        let mut digest: u64 = 0;
+        for ch in to.chars() {
+            digest = (digest * 131 + u64::from(u32::from(ch))) % 0xFFFFFF;
+        }
+        let local = to.split('@').next().unwrap_or(to);
+        let head: String = subject.chars().take(12).filter(|c| *c != ' ').collect();
+        format!("mock-{local}_{digest:06x}-{head}")
+    }
+}
 
 // ── 执行器：一轮推一步（对应 runner.py）────────────────────────
 

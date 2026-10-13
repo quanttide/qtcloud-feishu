@@ -11,6 +11,8 @@
 
 ### Changed
 
+- 能力层并回样例：删掉库目标 `src/lib.rs` 与契约 / 夹具模块 `src/mail_adapter.rs`、`src/mock.rs`，
+  改为 `examples/qtrecurit.rs` 的内联模块 `mail_adapter` / `mock`，示例自包含；行为与跨语言对照不动。
 - 重写 `docs/index.md`：CLI 文档入口，写明目标、设计哲学落点与形态差距。
 - Mail 适配器化：契约模块再改名 mail → `src/mail_adapter.rs`，trait `Capabilities` →
   `MailAdapter`；行为与跨语言对照不动。
