@@ -10,7 +10,7 @@
 
 ## 设计哲学写在流程文件里
 
-「流程是数据，不是代码」「人是当前实情，不是应有形态」「流程升级的方向就是把执行者从人换成系统」这几句话不在本目录，写在流程 YAML 的头部注释里：[流程文件](../examples/recruitment.yaml)（`examples/recruitment.yaml`，样例 `qtrecurit.rs` 以 `include_str!` 嵌入），与实验室 [recruitment.yaml](../../../../../examples/quanttide-feishu-lab/tests/fixtures/flows/recruitment.yaml) 同步拷贝。
+「流程是数据，不是代码」「人是当前实情，不是应有形态」「流程升级的方向就是把执行者从人换成系统」这几句话不在本目录，写在流程 YAML 的头部注释里：[流程文件](../examples/pipelines/send-invite-email.yaml)（`examples/pipelines/send-invite-email.yaml`，样例 `qtrecurit.rs` 以 `include_str!` 嵌入），与实验室 [recruitment.yaml](../../../../../examples/quanttide-feishu-lab/tests/fixtures/flows/recruitment.yaml) 同步拷贝。
 
 注释是为交接预埋的：等别人接手，打开 YAML 就能直接读到这套系统的设计哲学和当前边界。本目录不复述注释，改流程时直接读原文。
 

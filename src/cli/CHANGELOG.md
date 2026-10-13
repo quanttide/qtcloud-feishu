@@ -32,7 +32,7 @@
 
 ### Changed
 
-- 样例 `examples/qtrecurit.rs`：流程 YAML 提出独立文件 `examples/recruitment.yaml`，源码改用
+- 样例 `examples/qtrecurit.rs`：流程 YAML 提出独立文件 `examples/pipelines/send-invite-email.yaml`，源码改用
   `include_str!` 嵌入（编译期常量，行为不变）；YAML 现可直接编辑、高亮、diff，仍与实验室
   `tests/fixtures/flows/recruitment.yaml` 同步拷贝。
 

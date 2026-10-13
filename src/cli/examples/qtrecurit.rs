@@ -1,7 +1,7 @@
 //! 量潮招聘流程调度器——实验室 Python 实现的同逻辑重写（Rust 版）。
 //!
 //! 与 `examples/quanttide-feishu-lab` 的 `flow/state/runner` 一一对应：
-//! 流程是数据（YAML 在同目录 `recruitment.yaml`，改流程改那个文件），执行器读它推格——
+//! 流程是数据（YAML 在同目录 `pipelines/send-invite-email.yaml`，改流程改那个文件），执行器读它推格——
 //! 检查成立才推、动作先做失败不挪格、人 / 半自动只记待办。
 //! 能力层（契约 + mock 夹具）就近放在本文件，与实验室 capabilities/ 对应，示例自包含。
 //! 发群二维码这条动作用「先取」在发信之前取一次群邀请链接，填进邮件正文模板。
@@ -20,8 +20,8 @@ use serde::{Deserialize, Serialize};
 use crate::mail_adapter::MailAdapter;
 use crate::mock::Mock;
 
-/// 流程定义：与实验室 `tests/fixtures/flows/recruitment.yaml` 同步拷贝（同目录 `recruitment.yaml`）。
-const FLOW_YAML: &str = include_str!("recruitment.yaml");
+/// 流程定义：与实验室 `tests/fixtures/flows/recruitment.yaml` 同步拷贝（同目录 `pipelines/send-invite-email.yaml`）。
+const FLOW_YAML: &str = include_str!("pipelines/send-invite-email.yaml");
 
 // ── 流程定义：YAML → 结构（对应 flow.py）────────────────────────
 
