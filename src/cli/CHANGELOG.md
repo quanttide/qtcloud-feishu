@@ -19,6 +19,9 @@
 
 ### Changed
 
+- **命令面撤下**：`main.rs` 回到骨架（子命令未定义），不暴露 `unit` / `define` / `flow` 之类子命令——
+  命令面等形状定了再接。基础单元、串联器、执行器、落盘、后端都留在 `src/`，端到端测试收进
+  `src/e2e.rs`（真进程 + 假 lark-cli），不经过命令行。
 - 退役 `examples/qtrecurit.rs`：流程调度逻辑从样例提炼进 `src/`，样例不再自带一份内嵌流程 YAML
   与能力层；跨语言对照改为「同一份配置，实验室（Python）与本 CLI（Rust）跑同一批夹具」
 - `chrono` / `serde` / `serde_json` / `serde_yaml` 由开发依赖转为运行依赖（CLI 现在自己读配置）；
