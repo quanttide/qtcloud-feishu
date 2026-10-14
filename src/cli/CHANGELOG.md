@@ -32,6 +32,10 @@
 
 ### Changed
 
+- 文档去掉对实验室的同步拷贝依赖：实验室 `examples/quanttide-feishu-lab` 已收为骨架，流程 YAML、
+  夹具与测试设施的正本在本仓库——`CONTRIBUTING.md` 方法改为两步（样例先写 → 共用代码才提炼），
+  删「同步拷贝」一节；`README.md`、`docs/index.md` 的实验室引用同步改写
+
 - 样例 `examples/qtrecurit.rs`：入口由群二维码改为群邀请链接——流程
   `pipelines/send-invite-email.yaml` 第一条迁移去附件、`subject`/`body` 改用业务手册「邀请进群」话术；
   `Mail` 加 `subject`，`Entry` 加 `name`（从投递主题「岗位-姓名-学校-时长」解析），

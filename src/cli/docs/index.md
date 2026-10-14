@@ -10,7 +10,7 @@
 
 ## 设计哲学写在流程文件里
 
-「流程是数据，不是代码」「人是当前实情，不是应有形态」「流程升级的方向就是把执行者从人换成系统」这几句话不在本目录，写在流程 YAML 的头部注释里：[流程文件](../examples/pipelines/send-invite-email.yaml)（`examples/pipelines/send-invite-email.yaml`，样例 `qtrecurit.rs` 以 `include_str!` 嵌入），与实验室 [recruitment.yaml](../../../../../examples/quanttide-feishu-lab/tests/fixtures/flows/recruitment.yaml) 同步拷贝。
+「流程是数据，不是代码」「人是当前实情，不是应有形态」「流程升级的方向就是把执行者从人换成系统」这几句话不在本目录，写在流程 YAML 的头部注释里：[流程文件](../examples/pipelines/send-invite-email.yaml)（`examples/pipelines/send-invite-email.yaml`，样例 `qtrecurit.rs` 以 `include_str!` 嵌入）。
 
 注释是为交接预埋的：等别人接手，打开 YAML 就能直接读到这套系统的设计哲学和当前边界。本目录不复述注释，改流程时直接读原文。
 
@@ -20,4 +20,4 @@
 
 目标形态是多用户：作者之外，非技术的操作者在这套系统里日常推进流程。
 
-两种形态之间隔着「接入真实飞书」这道工序。接入之前先验证执行器和流程结构本身：同一份流程 YAML，实验室（Python）与本执行器（Rust）跑出相同输出。Rust 重写验证的就是「数据定义 + 通用执行器 + 能力契约」这套架构不依赖具体语言。
+两种形态之间隔着「接入真实飞书」这道工序。接入之前先验证了执行器和流程结构本身——跨语言对照已完成：同一份流程 YAML 曾由实验室（Python）与本执行器（Rust）跑出相同输出，验证「数据定义 + 通用执行器 + 能力契约」这套架构不依赖具体语言。实验室已收为骨架，正本在本仓库。

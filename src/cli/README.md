@@ -26,8 +26,9 @@ cargo run --example qtrecurit            # 量潮招聘流程调度器：一轮�
 cargo run --example qtrecurit -- --step  # 只推一步
 ```
 
-`qtrecurit` 是实验室（`examples/quanttide-feishu-lab`）同款逻辑的 Rust 重写：流程 YAML 与样例同目录
-（`pipelines/send-invite-email.yaml`，`include_str!` 嵌入），检查成立才推、动作先做失败不挪格、人 / 半自动只记待办，输出与 Python 版逐行相同。
+`qtrecurit` 是量潮招聘流程调度器：流程 YAML 与样例同目录
+（`pipelines/send-invite-email.yaml`，`include_str!` 嵌入），检查成立才推、动作先做失败不挪格、
+人 / 半自动只记待办。原为实验室 Python 版的 Rust 重写；实验室已收为骨架，此处即正本。
 
 ## 落盘位置（XDG）
 
