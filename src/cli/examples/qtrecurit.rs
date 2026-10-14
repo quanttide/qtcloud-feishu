@@ -4,7 +4,7 @@
 //! 流程是数据（YAML 在同目录 `pipelines/send-invite-email.yaml`，改流程改那个文件），执行器读它推格——
 //! 检查成立才推、动作先做失败不挪格、人 / 半自动只记待办。
 //! 能力层（契约 + mock 夹具）就近放在本文件，与实验室 capabilities/ 对应，示例自包含。
-//! 发群二维码这条动作用「先取」在发信之前取一次群邀请链接，填进邮件正文模板。
+//! 发实训邀请这条动作用「先取」在发信之前取一次群邀请链接，并从投递主题解析姓名，填进邮件正文模板。
 //!
 //! 跑法（在 `src/cli` 下）：
 //!     cargo run --example qtrecurit            # 一轮推到底，再打印每人在哪格
@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use crate::mail_adapter::MailAdapter;
 use crate::mock::Mock;
 
-/// 流程定义：与实验室 `tests/fixtures/flows/recruitment.yaml` 同步拷贝（同目录 `pipelines/send-invite-email.yaml`）。
+/// 流程定义：实验室 `tests/fixtures/flows/recruitment.yaml` 招聘流程的样例改写——按「能力」调用，正文与附件随入口改用群邀请链接（同目录 `pipelines/send-invite-email.yaml`）。
 const FLOW_YAML: &str = include_str!("pipelines/send-invite-email.yaml");
 
 // ── 流程定义：YAML → 结构（对应 flow.py）────────────────────────
@@ -114,6 +114,9 @@ enum Value {
 struct Entry {
     since: String,
     state: String,
+    /// 候选人姓名（从投递主题解析，供正文模板引用）。
+    #[serde(default)]
+    name: String,
     #[serde(default)]
     trail: Vec<String>,
 }
@@ -140,7 +143,7 @@ fn save_state(path: &Path, state: &State) -> std::io::Result<()> {
 fn derive(flow: &Flow, cap: &impl MailAdapter, today: &str) -> State {
     let members: BTreeSet<String> = cap.read_group_members().into_iter().collect();
 
-    let mut applied: BTreeMap<String, String> = BTreeMap::new();
+    let mut applied: BTreeMap<String, (String, String)> = BTreeMap::new();
     for folder in &flow.collect.scope {
         if folder != "收件箱" {
             continue; // 漂移 / Spam 是补拉范围：进人仍以收件箱为准（见流程「待定」）
@@ -148,14 +151,16 @@ fn derive(flow: &Flow, cap: &impl MailAdapter, today: &str) -> State {
         for m in cap.read_mail(folder) {
             let who = m.sender.to_lowercase();
             if who.contains('@') {
-                applied.entry(who).or_insert(m.date);
+                applied
+                    .entry(who)
+                    .or_insert((m.date, candidate_name(&m.subject)));
             }
         }
     }
 
     // 群里还有员工，不是候选人：候选人从投递来，群成员只用来升级状态
     let mut state = State::new();
-    for (who, date) in applied {
+    for (who, (date, name)) in applied {
         let member = members.contains(&who);
         let (where_, since) = if member {
             ("已进群".to_string(), today.to_string())
@@ -167,11 +172,21 @@ fn derive(flow: &Flow, cap: &impl MailAdapter, today: &str) -> State {
             Entry {
                 since,
                 state: where_.clone(),
+                name,
                 trail: vec![where_],
             },
         );
     }
     state
+}
+
+/// 从投递主题解析姓名：主题形如「岗位-姓名-学校-时长」，取第二段；取不到留空。
+fn candidate_name(subject: &str) -> String {
+    subject
+        .split('-')
+        .nth(1)
+        .map(|name| name.trim().to_string())
+        .unwrap_or_default()
 }
 
 /// 「YYYY-MM-DD」之间隔了几天（对应 state.py::since_days）。
@@ -197,6 +212,8 @@ mod mail_adapter {
     pub struct Mail {
         pub sender: String,
         pub date: String,
+        /// 主题：候选人姓名从这里解析（见 `candidate_name`）。
+        pub subject: String,
     }
 
     /// 流程要用到的四种能力。参数与返回值都用普通数据，不给调用方任何平台概念。
@@ -230,10 +247,9 @@ mod mail_adapter {
 mod mock {
     //! 能力层的 mock 实现：数据构造时注入，零外部 IO。
     //!
-    //! 与实验室 `capabilities/mock.py` 对应，两件事分开放：
     //! 契约在 [`crate::mail_adapter`]，这里只管「拿一份数据当能力使」；
-    //! `Mock::default()` 是实验室那套夹具（跨语言对照的 `message_id` 算法也对齐），
-    //! 换场景用 [`Mock::with`] 注入另一份数据，不改本文件。
+    //! `Mock::default()` 是实验室那套夹具加上投递主题（姓名从主题解析，见 `candidate_name`；
+    //! 跨语言对照的 `message_id` 算法也对齐），换场景用 [`Mock::with`] 注入另一份数据，不改本文件。
 
     use std::cell::{Cell, RefCell};
     use std::collections::BTreeMap;
@@ -255,8 +271,8 @@ mod mock {
     /// 夹具不再是编译期常量：文件夹、群成员、读哪个群都由构造给，
     /// 同一进程里可以有多套互不相干的数据，测试之间互不污染。
     pub struct Mock {
-        /// 文件夹名 → 邮件（发件人, 日期）
-        pub folders: BTreeMap<String, Vec<(String, String)>>,
+        /// 文件夹名 → 邮件（发件人, 日期, 主题）
+        pub folders: BTreeMap<String, Vec<(String, String, String)>>,
         /// 群 id → 成员邮箱
         pub groups: BTreeMap<String, Vec<String>>,
         /// 本实例读哪个群（与真实现把 chat_id 放构造参数的做法对齐，方法签名不带群概念）
@@ -270,7 +286,7 @@ mod mock {
     impl Mock {
         /// 任意数据构造：换场景换一份数据，不改这个文件。
         pub fn with(
-            folders: BTreeMap<String, Vec<(String, String)>>,
+            folders: BTreeMap<String, Vec<(String, String, String)>>,
             groups: BTreeMap<String, Vec<String>>,
             chat_id: &str,
         ) -> Self {
@@ -290,13 +306,26 @@ mod mock {
             let folders = BTreeMap::from([(
                 "收件箱".to_string(),
                 vec![
-                    ("chenmo@example.com".to_string(), "2026-10-02".to_string()),
+                    (
+                        "chenmo@example.com".to_string(),
+                        "2026-10-02".to_string(),
+                        "产品运营-陈默-武夷学院-6个月".to_string(),
+                    ),
                     (
                         "linyizhou@example.com".to_string(),
                         "2026-10-03".to_string(),
+                        "数据工程-林亦舟-厦门大学-6个月".to_string(),
                     ),
-                    ("suxiao@example.com".to_string(), "2026-10-03".to_string()),
-                    ("herui@example.com".to_string(), "2026-10-04".to_string()),
+                    (
+                        "suxiao@example.com".to_string(),
+                        "2026-10-03".to_string(),
+                        "新媒体运营-苏晓-福建师范-6个月".to_string(),
+                    ),
+                    (
+                        "herui@example.com".to_string(),
+                        "2026-10-04".to_string(),
+                        "人力资源-何瑞-福州大学-6个月".to_string(),
+                    ),
                 ],
             )]);
             let groups = BTreeMap::from([(
@@ -318,9 +347,10 @@ mod mock {
                 .map(|mails| {
                     mails
                         .iter()
-                        .map(|(sender, date)| Mail {
+                        .map(|(sender, date, subject)| Mail {
                             sender: sender.clone(),
                             date: date.clone(),
+                            subject: subject.clone(),
                         })
                         .collect()
                 })
@@ -410,12 +440,19 @@ fn holds(
 }
 
 /// 执行迁移的动作：调能力，返回它的返回值（没有动作返回 None）。
-fn perform(mig: &Migration, cap: &impl MailAdapter, who: &str) -> Result<Option<String>, String> {
+fn perform(
+    mig: &Migration,
+    cap: &impl MailAdapter,
+    who: &str,
+    name: &str,
+) -> Result<Option<String>, String> {
     let Some(action) = &mig.action else {
         return Ok(None);
     };
-    // 先取：动作之前多跑一次能力，取到的值按 as 起名，填进参数模板（如群邀请链接）
+    // 先取：动作之前多跑一次能力，取到的值按 as 起名，填进参数模板（如群邀请链接）；
+    // 姓名（从投递主题解析）也走同一套模板变量。
     let mut vars: BTreeMap<String, String> = BTreeMap::new();
+    vars.insert("候选人.姓名".to_string(), name.to_string());
     for fetch in &action.fetch {
         if !fetch.params.is_empty() {
             return Err(format!(
@@ -510,7 +547,7 @@ fn advance(
                 ));
                 continue;
             }
-            let result = perform(mig, cap, &who)?; // 动作先做：失败就不挪格
+            let result = perform(mig, cap, &who, &entry.name)?; // 动作先做：失败就不挪格
             entry.state = mig.to.clone();
             entry.since = today.to_string();
             entry.trail.push(mig.to.clone());
@@ -585,12 +622,12 @@ mod tests {
     use super::*;
 
     /// 造一份场景数据：收件箱 + 群成员都可指定——数据是注入的，不是编译期常量。
-    fn scene(inbox: &[(&str, &str)], members: &[&str]) -> Mock {
+    fn scene(inbox: &[(&str, &str, &str)], members: &[&str]) -> Mock {
         let folders = BTreeMap::from([(
             "收件箱".to_string(),
             inbox
                 .iter()
-                .map(|(e, d)| (e.to_string(), d.to_string()))
+                .map(|(e, d, s)| (e.to_string(), d.to_string(), s.to_string()))
                 .collect::<Vec<_>>(),
         )]);
         let groups = BTreeMap::from([(
@@ -608,22 +645,29 @@ mod tests {
     #[test]
     fn 动作失败就不挪格() {
         let flow = flow();
-        let cap = scene(&[("newbie@example.com", "2026-10-12")], &[]);
+        let cap = scene(
+            &[(
+                "newbie@example.com",
+                "2026-10-12",
+                "产品运营-张三-某学院-6个月",
+            )],
+            &[],
+        );
 
         // 正常路径先各发一封：留得下记录、断言得出内容
         let id = cap
             .send_mail(
                 "a@example.com",
-                "量潮实训基地 · 群二维码",
+                "量潮实训基地邀请",
                 "正文",
-                &["群二维码.png".to_string()],
+                &["邀请函.pdf".to_string()],
             )
             .expect("正常发信应成功");
         {
             let sent = cap.sent.borrow();
             assert_eq!(sent.len(), 1);
             assert_eq!(sent[0].message_id, id);
-            assert_eq!(sent[0].attachments, ["群二维码.png"]);
+            assert_eq!(sent[0].attachments, ["邀请函.pdf"]);
         }
 
         cap.fail_send.set(true);
@@ -643,7 +687,14 @@ mod tests {
     #[test]
     fn 发信前先取邀请链接并填进正文() {
         let flow = flow();
-        let cap = scene(&[("newbie@example.com", "2026-10-12")], &[]);
+        let cap = scene(
+            &[(
+                "newbie@example.com",
+                "2026-10-12",
+                "产品运营-张三-某学院-6个月",
+            )],
+            &[],
+        );
         let mut state = derive(&flow, &cap, "2026-10-12");
 
         advance(&flow, &cap, &mut state, "2026-10-12", false).expect("应能推一步");
@@ -651,25 +702,32 @@ mod tests {
         let sent = cap.sent.borrow();
         assert_eq!(sent.len(), 1, "投递那位该收到一封");
         let mail = &sent[0];
-        assert_eq!(mail.subject, "量潮实训基地 · 群二维码");
+        assert_eq!(mail.subject, "量潮实训基地邀请");
         assert!(
             mail.body.contains("link_token=mock-oc_mock"),
             "正文里该填进邀请链接：{}",
             mail.body
         );
         assert!(
-            mail.body.contains("扫码直接进群"),
-            "模板原话要留着：{}",
+            mail.body.contains("张三你好"),
+            "正文该带上姓名：{}",
             mail.body
         );
-        assert_eq!(mail.attachments, ["群二维码.png"], "二维码附件照旧");
+        assert!(mail.attachments.is_empty(), "入口改链接，不再附二维码");
     }
 
     /// 迟到的扫码照样算（复活）：成员是运行期注入的，不在默认夹具里。
     #[test]
     fn 迟到的扫码照样追认() {
         let flow = flow();
-        let alone = scene(&[("late@example.com", "2026-10-12")], &[]);
+        let alone = scene(
+            &[(
+                "late@example.com",
+                "2026-10-12",
+                "数据工程-李四-某学院-6个月",
+            )],
+            &[],
+        );
         let mut state = derive(&flow, &alone, "2026-10-12");
         assert_eq!(state["late@example.com"].state, "投递");
 
@@ -684,7 +742,14 @@ mod tests {
         ];
 
         // 后来扫码进群：同一场景重新注入成员（数据是构造进来的，能改）
-        let joined = scene(&[("late@example.com", "2026-10-12")], &["late@example.com"]);
+        let joined = scene(
+            &[(
+                "late@example.com",
+                "2026-10-12",
+                "数据工程-李四-某学院-6个月",
+            )],
+            &["late@example.com"],
+        );
         let report =
             advance(&flow, &joined, &mut state, "2026-10-12", false).expect("追认不该失败");
         assert!(

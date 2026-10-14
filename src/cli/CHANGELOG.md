@@ -32,6 +32,11 @@
 
 ### Changed
 
+- 样例 `examples/qtrecurit.rs`：入口由群二维码改为群邀请链接——流程
+  `pipelines/send-invite-email.yaml` 第一条迁移去附件、`subject`/`body` 改用业务手册「邀请进群」话术；
+  `Mail` 加 `subject`，`Entry` 加 `name`（从投递主题「岗位-姓名-学校-时长」解析），
+  `perform` 把 `{{候选人.姓名}}` 与 `{{邀请链接}}` 一并填进正文。
+
 - 样例 `examples/qtrecurit.rs`：流程 YAML 提出独立文件 `examples/pipelines/send-invite-email.yaml`，源码改用
   `include_str!` 嵌入（编译期常量，行为不变）；YAML 现可直接编辑、高亮、diff，仍与实验室
   `tests/fixtures/flows/recruitment.yaml` 同步拷贝。
