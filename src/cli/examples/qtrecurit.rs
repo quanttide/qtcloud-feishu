@@ -737,7 +737,7 @@ mod tests {
         entry.since = "2026-10-02".to_string();
         entry.trail = vec![
             "投递".to_string(),
-            "二维码已发".to_string(),
+            "邀请已发".to_string(),
             "无响应".to_string(),
         ];
 

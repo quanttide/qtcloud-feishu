@@ -28,7 +28,7 @@ fn 动作先做检查成立才推() {
     let report = advance(&engine, &flow, &mut state, &context, "2026-10-13", false).unwrap();
     assert_eq!(report.advanced.len(), 1, "只有投递那位推得动");
     assert_eq!(report.advanced[0].0, "chenmo@example.com");
-    assert_eq!(state["chenmo@example.com"].state, "二维码已发");
+    assert_eq!(state["chenmo@example.com"].state, "邀请已发");
     assert_eq!(state["chenmo@example.com"].since, "2026-10-13");
     assert!(
         report.waiting.is_empty(),

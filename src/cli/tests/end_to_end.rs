@@ -148,7 +148,7 @@ fn 从原始数据重建后推一轮() {
 
     let report = flow::advance(&engine, &flow, &mut state, &context, "2026-10-13", false).unwrap();
     assert_eq!(report.advanced.len(), 1);
-    assert_eq!(state["chenmo@example.com"].state, "二维码已发");
+    assert_eq!(state["chenmo@example.com"].state, "邀请已发");
     assert!(
         fake_lark_cli::landed(&fake.store())
             .iter()
@@ -169,6 +169,6 @@ fn 状态落盘能读回() {
     let path = fake.dir.join("state.json");
     flow::save_state(&path, &state).unwrap();
     let reloaded = flow::load_state(&path);
-    assert_eq!(reloaded["chenmo@example.com"].state, "二维码已发");
+    assert_eq!(reloaded["chenmo@example.com"].state, "邀请已发");
     assert_eq!(reloaded["chenmo@example.com"].since, "2026-10-13");
 }
