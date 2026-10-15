@@ -4,6 +4,9 @@
 
 ### Added
 
+- 新增 `TODO.md`：以案例集 `docs/gallery/qtrecurit/send-invite-email.md` 为事实源的改进项，分五组
+  （真 CLI 跑通四步管道 / 状态可重建 / 批量 / 命令面 / 测试与待裁定）；实验室已收为骨架，对照项不列
+
 - 基础单元第 14 个动作 `im_chat_link`（`im chats link`，取群分享链接）：`validity_period` 走
   `--data '{"validity_period": "…"}'`（`week` / `year` / `permanently`）。边界（实测）：
   调用者得是群成员；**外部群机器人身份取不到**（API 232033），要么用用户身份。
