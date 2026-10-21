@@ -4,8 +4,8 @@
 
 ### Added
 
-- 新增 `TODO.md`：以案例集 `docs/gallery/qtrecurit/send-invite-email.md` 为事实源的改进项，分五组
-  （真 CLI 跑通四步管道 / 状态可重建 / 批量 / 命令面 / 测试与待裁定）；实验室已收为骨架，对照项不列
+- 新增 `docs/gaps.md`：与真 `lark-cli` 的差距，分五组（真 CLI 跑通四步管道 / 状态可重建 / 批量 / 命令面 / 测试与待裁定），判断依据指向适配仓的案例集与手册。原 `TODO.md` 内容并入此文档后删除
+  （实验室已收为骨架，对照项不列）
 
 - 基础单元第 14 个动作 `im_chat_link`（`im chats link`，取群分享链接）：`validity_period` 走
   `--data '{"validity_period": "…"}'`（`week` / `year` / `permanently`）。边界（实测）：
