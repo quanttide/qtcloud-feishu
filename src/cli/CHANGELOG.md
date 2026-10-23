@@ -4,6 +4,11 @@
 
 ### Added
 
+- 新增 `docs/consumption.md`：通用的增量消费模型（Source → Observation → Subscription → Consumer → Checkpoint），
+  回答 qtcloud-feishu#1。含五个概念的边界、Position 与读位和 State 的分工、一次摄取多次分发的日志布局、
+  至少一次语义下的提交协议与幂等策略、与 `engine.rs` 增量声明及 `store.rs` 落盘契约的接入方式、
+  飞书群消息的第一阶段映射（顺序键用 `updated_at`、窗口扫描加重叠），以及七步落地顺序与各步判据
+
 - 新增 `docs/gaps.md`：与真 `lark-cli` 的差距，分五组（真 CLI 跑通四步管道 / 状态可重建 / 批量 / 命令面 / 测试与待裁定），判断依据指向适配仓的案例集与手册。原 `TODO.md` 内容并入此文档后删除
   （实验室已收为骨架，对照项不列）
 
