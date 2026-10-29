@@ -4,6 +4,7 @@
 
 ### Added
 
+- 待确认队列接真数据（Studio ROADMAP 阶段二）：`DraftSource` 直读 CLI 的 XDG 落盘（state + 信封 + ops.jsonl 兑底），三种状态文案分开，字段缺失与读取问题原样报出；web 读不了本地目录时按「没接上」呈现
 - 新增 CLI 与 Studio 两份 ROADMAP（`src/<端>/ROADMAP.md`，与 README 并列），含带日期的设计偏差反思
 - 新增草稿确认闭环（CLI ROADMAP 阶段二）：`flow::Entry` 加 `artifacts` 产物表与 `confirmed` 确认日期（旧 state 文件兼容）；迁移检查加 `已确认`；确认入口唯一 `flow::confirm`，重复确认报错；测试流程跑通「起草→停格→确认→发草稿」
 - CLI 迁入邮件发送通道（qtcloud-connect 迁入方案第 5 步的库能力）：新增 `mail_draft_create` / `mail_draft_send` 两个动作，`mail_send` 与起草均支持 `body_file`；动作共十六个

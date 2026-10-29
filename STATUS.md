@@ -16,10 +16,10 @@
 
 ## Studio 进度
 
-骨架刚立（2026-10-29）：`flutter create` 工程 + 起点页待确认队列（`lib/screens/draft_queue.dart`），数据源未接。
+起点页待确认队列已接真数据（2026-10-29，`lib/services/draft_source.dart` 直读 CLI 的 XDG 落盘）：三种状态文案分开，字段缺失原样报出；按钮仍禁用（确认写回是阶段三）。
 
 - 定位：与 CLI 共用同一套文件契约（资源登记、流程定义、落盘、游标），CLI 执行落盘、Studio 看与确认；不实现第二套飞书调用
-- 起点页选待确认队列：草稿确认制是唯一需人参与才闭环的界面，且只消费落盘草稿记录，契约最窄；按钮先禁用，写回随落盘契约一起定
+- 数据通路：桌面形态直读；web 读不了本地目录，上云时换服务封装（`DraftSource` 形状不变）
 - 后续界面方向：流程看板（推格状态）、能力目录（从登记生成表单）；顺序以 [src/studio/ROADMAP.md](src/studio/ROADMAP.md) 为准
 - 验证：`flutter analyze` / `flutter test` / `flutter build web --release --base-href /`
 

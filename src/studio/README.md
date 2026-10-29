@@ -22,7 +22,15 @@ flutter pub get
 flutter run -d chrome
 ```
 
-Studio 读 CLI 的 XDG 落盘目录，两边同库同状态；要多人协作再考虑共享存储或服务化，界面与契约不变。注意：这条通路只在桌面形态成立，web 静态产物读不了本地目录——形态选择见 [../ROADMAP.md](../ROADMAP.md) 阶段二。
+## 数据源
+
+待确认队列直读 CLI 的本机落盘（桌面形态，`lib/services/draft_source.dart`）：
+
+- 待确认条目：`<state>/qtcloud-feishu/<流程名>.json` 里 `confirmed` 为空且 `artifacts.草稿id` 非空
+- 草稿内容：`raw/mail/draft-create/` 信封优先，`to`/`subject` 缺时从 `ops.jsonl` 兑底，字段缺失原样报出
+- 读不到时区分「数据源没接上」与「队列为空」
+
+web 静态产物读不了本地目录——这条通路只在桌面形态成立，上云时把 `DraftSource` 换成服务封装，形状不变。确认写回（按钮启用）是 ROADMAP 阶段三，现在按钮禁用。
 
 实施顺序与设计反思见 [ROADMAP.md](ROADMAP.md)。
 
