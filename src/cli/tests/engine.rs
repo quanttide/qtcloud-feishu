@@ -64,7 +64,7 @@ fn 嵌在文字里的模板拼成字() {
 fn 定义读得通() {
     let defs = fake_lark_cli::definitions();
     assert!(defs.contains_key("读投递邮件"));
-    assert_eq!(defs.len(), 7, "这套测试用七条定义");
+    assert_eq!(defs.len(), 8, "这套测试用八条定义");
 }
 
 #[test]

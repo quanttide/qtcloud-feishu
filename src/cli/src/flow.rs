@@ -75,6 +75,9 @@ pub struct Check {
     pub holds: Option<String>,
     #[serde(rename = "计时")]
     pub timing: Option<Timing>,
+    /// 人确认过才成立：确认写在 `Entry::confirmed`（由 [`confirm`] 置），不碰飞书。
+    #[serde(rename = "已确认")]
+    pub confirmed: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -107,6 +110,13 @@ pub struct Entry {
     pub state: String,
     #[serde(default)]
     pub trail: Vec<String>,
+    /// 动作产出的产物：起草动作的草稿 id 存这里，跨进程读得回。
+    /// 旧格式的 state 文件没有这个字段，serde 默认空表照读。
+    #[serde(default)]
+    pub artifacts: BTreeMap<String, Value>,
+    /// 人确认的日期（空串＝未确认）：确认是一次状态变更，写进 state 文件就是留痕。
+    #[serde(default)]
+    pub confirmed: String,
 }
 
 pub type State = BTreeMap<String, Entry>;
@@ -198,6 +208,7 @@ pub fn derive(
                 since,
                 state: place.clone(),
                 trail: vec![place],
+                ..Entry::default()
             },
         );
     }
@@ -235,6 +246,9 @@ fn holds(
         // 纯时间检查：不碰飞书
         return Ok(days_since(&entry.since, today).unwrap_or(0) >= timing.days);
     }
+    if check.confirmed.unwrap_or(false) {
+        return Ok(!entry.confirmed.is_empty());
+    }
     let Some(definition) = &check.definition else {
         return Ok(false);
     };
@@ -251,27 +265,49 @@ fn holds(
     }
 }
 
-/// 跑动作那条定义，返回它的产出（拿来做副作用那句话）。
+/// 人确认一条待发的产物（如草稿）：置确认日期，state 文件落盘就是留痕。
+/// 这是确认的唯一写回口——命令面与 Studio 都走这一个，不发明第二种确认语义。
+pub fn confirm(state: &mut State, who: &str, today: &str) -> Result<(), String> {
+    let entry = state
+        .get_mut(who)
+        .ok_or_else(|| format!("没有这个人：{who}"))?;
+    if !entry.confirmed.is_empty() {
+        return Err(format!("{who} 已在 {} 确认过，不重复确认", entry.confirmed));
+    }
+    entry.confirmed = today.to_string();
+    entry.trail.push("已确认".to_string());
+    Ok(())
+}
+
+/// 跑动作那条定义，返回（做成了哪句话，动作产出的产物）。
 fn perform(
     engine: &Engine,
     mig: &Migration,
     who: &str,
+    entry: &Entry,
     context: &Map<String, Value>,
-) -> Result<String, String> {
+) -> Result<(String, Map<String, Value>), String> {
     let Some(action) = &mig.action else {
-        return Ok(String::new());
+        return Ok((String::new(), Map::new()));
     };
-    let outcome = engine.call(&action.definition, &with_candidate(context, who))?;
-    if !outcome.single.is_empty() {
-        return Ok(outcome
+    let mut ctx = with_candidate(context, who);
+    if !entry.artifacts.is_empty() {
+        let artifacts: Map<String, Value> = entry.artifacts.clone().into_iter().collect();
+        ctx.insert("产物".to_string(), Value::Object(artifacts));
+    }
+    let outcome = engine.call(&action.definition, &ctx)?;
+    let effect = if !outcome.single.is_empty() {
+        outcome
             .single
             .values()
             .filter(|value| !is_absent(value))
             .map(text)
             .collect::<Vec<_>>()
-            .join("，"));
-    }
-    Ok(outcome.values().join("，"))
+            .join("，")
+    } else {
+        outcome.values().join("，")
+    };
+    Ok((effect, outcome.single))
 }
 
 /// 推一轮：系统执行且检查成立的推过去（动作先做，失败不挪格），人/半自动记待办。
@@ -311,6 +347,8 @@ pub fn advance(
                         check.definition.clone().unwrap_or_else(|| {
                             if check.timing.is_some() {
                                 "计时".into()
+                            } else if check.confirmed.unwrap_or(false) {
+                                "已确认".into()
                             } else {
                                 "无检查".into()
                             }
@@ -324,7 +362,7 @@ pub fn advance(
                 ));
                 continue;
             }
-            let result = perform(engine, mig, &who, context)?;
+            let (result, artifacts) = perform(engine, mig, &who, &entry, context)?;
             let effect = match (mig.effect.is_empty(), result.is_empty()) {
                 (true, _) => result,
                 (false, true) => mig.effect.clone(),
@@ -334,6 +372,11 @@ pub fn advance(
                 entry.state = mig.to.clone();
                 entry.since = today.to_string();
                 entry.trail.push(mig.to.clone());
+                for (key, value) in artifacts {
+                    if !is_absent(&value) {
+                        entry.artifacts.insert(key, value);
+                    }
+                }
             }
             report
                 .advanced

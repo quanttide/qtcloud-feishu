@@ -51,7 +51,7 @@
 2. 聊天记录搜索（im-search）
 3. 群通知（im-notice）：依赖群搜索、人员搜索、消息发送
 4. 邮件投递统计（mail-report）：拉取迁入，分类与报告留领域层
-5. ~~邮件发送通道（mail-send）~~ **已迁入**（2026-10-29，库能力）：`mail_draft_create` / `mail_draft_send` 两动作，`logged` 操作日志（`ops.jsonl`，fail-closed），三十秒超时（`LARK_CLI_TIMEOUT` 可覆盖），`plan` dry-run；流程化草稿确认（执行器保存草稿 id）留第二阶段
+5. ~~邮件发送通道（mail-send）~~ **已迁入**（2026-10-29）：库能力（`mail_draft_create` / `mail_draft_send` 两动作，`logged` 操作日志，三十秒超时，`plan` dry-run）+ 草稿确认闭环（执行器产物与确认机制，见 [ROADMAP.md](ROADMAP.md) 阶段二）。遗留：确认只有库入口，命令面与 Studio 按钮未接
 6. 聊天知识提取（im-extract）：只交付输入侧字段契约，模型与提示词不进本仓
 
 迁移原则见 dev-guide 总览：适配层只做去平台化不做领域化、流程是数据、写回人工确认、命令面仍不定义。

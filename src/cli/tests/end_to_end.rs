@@ -167,15 +167,13 @@ fn 起草定义两步取链接填正文但不发() {
 }
 
 #[test]
-fn 人确认后按草稿id把草稿发出去() {
+fn 人确认后按状态里的草稿id把草稿发出去() {
     let fake = Fake::new("e2e_draft_send");
     let engine = engine_of(&fake);
-    let outcome = engine
-        .call(
-            "发草稿",
-            &context(&[("邮箱", "hr@example.com"), ("草稿id", "mock-draft-001")]),
-        )
-        .unwrap();
+    // 草稿 id 从状态的产物来：直接调定义时把产物放进上下文
+    let mut ctx = context(&[("邮箱", "hr@example.com")]);
+    ctx.insert("产物".to_string(), json!({"草稿id": "mock-draft-001"}));
+    let outcome = engine.call("发草稿", &ctx).unwrap();
     assert_eq!(outcome.single["邮件id"], "mock-from-draft");
 
     let log = fake.argv_log();

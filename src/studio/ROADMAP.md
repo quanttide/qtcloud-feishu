@@ -21,6 +21,12 @@ Studio 的实施路线：阶段目标、顺序依据、后置代价。定位（�
 2. `Draft` 模型重对齐：以 `raw/mail/draft-create/0001.json` 的真实信封字段为准（`draft_id`、`to`、`subject`、`body`…），删掉想象字段。
 3. 「已发未发」的判法：对照 `raw/mail/draft-send/` 里出现过的 draft_id，不出现在其中的即待确认。
 
+数据契约（CLI 阶段二已定，2026-10-29）：
+
+- 待确认 = state 文件（`<state>/qtcloud-feishu/<流程名>.json`）里 `confirmed` 为空且 `artifacts.草稿id` 非空的条目
+- 草稿内容（收件人、主题、正文）= `raw/mail/draft-create/<页序>.json` 信封里对应字段；平台字段名会变，以落盘为准，解析失败要报出来而不是猜
+- 确认写回 = 置 `confirmed` 为当天日期 + `trail` 追加「已确认」，重复确认报错——与 CLI 的 `flow::confirm` 同一语义，不发明第二种
+
 ## 阶段三：确认写回
 
 - 达成标志：在 Studio 点「确认发送」，下一次流程执行真把这封草稿发出去；驳回后草稿不再被发送。按钮从禁用变启用。
