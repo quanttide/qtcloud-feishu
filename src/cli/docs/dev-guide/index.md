@@ -71,8 +71,8 @@ cargo clippy --locked -- -A warnings
 ## 待定
 
 - 命令面形状：`units`、`define`、`flow` 是否恢复，决定发送日志与 dry-run 的对外入口。
-- 草稿确认的落点：由命令面交互承担，还是写进流程；后者需要执行器保存草稿 id。→ 收进 [roadmap.md](roadmap.md) 阶段二
+- 草稿确认的落点：由命令面交互承担，还是写进流程；后者需要执行器保存草稿 id。→ 收进 [ROADMAP.md](../../ROADMAP.md) 阶段二
 - 身份：哪些动作固定 `--as user`，哪些允许 bot；群链接与消息发送已确认要用用户身份。
 - 敏感数据：聊天原文进入镜像后的目录权限，以及外发模型时的脱敏责任。
 
-实施顺序与阶段判据见 [roadmap.md](roadmap.md)。
+实施顺序与阶段判据见 [ROADMAP.md](../../ROADMAP.md)。

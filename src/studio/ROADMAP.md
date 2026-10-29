@@ -42,5 +42,5 @@ Studio 的实施路线：阶段目标、顺序依据、后置代价。定位（�
 
 ## 关联
 
-- CLI 的对应路线：`src/cli/docs/dev-guide/roadmap.md`（阶段二定义的数据契约是本仓阶段二的输入）
+- CLI 的对应路线：[../cli/ROADMAP.md](../cli/ROADMAP.md)（阶段二定义的数据契约是本仓阶段二的输入）
 - 页面：`lib/screens/draft_queue.dart`

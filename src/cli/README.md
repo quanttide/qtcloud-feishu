@@ -46,6 +46,8 @@ cargo run --example qtrecurit -- --step  # 只推一步
 从飞书侧重建，但重启后要还在，所以落 state。规则与判据在 `src/paths.rs`（`cargo test --test paths`）。
 凭证不在这里——那是 `lark-cli` 自己的 keychain（`lark-cli auth status` 能看）。
 
+实施顺序与设计反思见 [ROADMAP.md](ROADMAP.md)。
+
 ## 许可
 
 [Apache License 2.0](../../LICENSE)

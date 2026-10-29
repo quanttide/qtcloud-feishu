@@ -22,9 +22,9 @@ flutter pub get
 flutter run -d chrome
 ```
 
-Studio 读 CLI 的 XDG 落盘目录，两边同库同状态；要多人协作再考虑共享存储或服务化，界面与契约不变。注意：这条通路只在桌面形态成立，web 静态产物读不了本地目录——形态选择见 [docs/dev-guide/roadmap.md](docs/dev-guide/roadmap.md) 阶段二。
+Studio 读 CLI 的 XDG 落盘目录，两边同库同状态；要多人协作再考虑共享存储或服务化，界面与契约不变。注意：这条通路只在桌面形态成立，web 静态产物读不了本地目录——形态选择见 [../ROADMAP.md](../ROADMAP.md) 阶段二。
 
-实施顺序与设计反思见 [docs/dev-guide/roadmap.md](docs/dev-guide/roadmap.md)。
+实施顺序与设计反思见 [ROADMAP.md](ROADMAP.md)。
 
 ## 验证
 

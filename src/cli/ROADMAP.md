@@ -47,6 +47,6 @@ CLI 的实施路线：阶段目标、顺序依据、后置代价。方向与判�
 
 ## 关联
 
-- 迁入方案总览：[index.md](index.md)
-- 邮件通道迁入（含遗留待定）：[mail-send.md](mail-send.md)
-- Studio 的对应路线：`src/studio/docs/dev-guide/roadmap.md`
+- 迁入方案总览：[docs/dev-guide/index.md](docs/dev-guide/index.md)
+- 邮件通道迁入（含遗留待定）：[docs/dev-guide/mail-send.md](docs/dev-guide/mail-send.md)
+- Studio 的对应路线：[../studio/ROADMAP.md](../studio/ROADMAP.md)
