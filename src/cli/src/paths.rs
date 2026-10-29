@@ -59,6 +59,11 @@ pub fn state_path(name: &str) -> Result<PathBuf, String> {
     Ok(locate("XDG_STATE_HOME", &[".local", "state"], &env)?.join(format!("{name}.json")))
 }
 
+/// 操作日志：`<state>/qtcloud-feishu/ops.jsonl`——写动作成功后追加一行，只记元数据。
+pub fn ops_log_path() -> Result<PathBuf, String> {
+    Ok(locate("XDG_STATE_HOME", &[".local", "state"], &env)?.join("ops.jsonl"))
+}
+
 /// 定义与流程的缺省位置：`<config>/qtcloud-feishu/<名字>.yaml`。
 pub fn config_path(name: &str) -> Result<PathBuf, String> {
     Ok(locate("XDG_CONFIG_HOME", &[".config"], &env)?.join(format!("{name}.yaml")))

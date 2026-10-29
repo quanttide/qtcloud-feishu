@@ -38,4 +38,5 @@ pub const ACTIONS: &[Action] = &[Action {
     ],
     variants_key: "scope",
     defaults: &[],
+    logged: false,
 }];

@@ -1,11 +1,11 @@
-//! 基础单元（门面）：六资源十四个动作——动作登记就是契约，按飞书资源分文件。
+//! 基础单元（门面）：六资源十六个动作——动作登记就是契约，按飞书资源分文件。
 //!
 //! ```text
 //! mail.rs / im.rs / vc.rs / task.rs / doc.rs / base.rs   各资源的动作登记
 //! action.rs         登记的形状：Action + Page / Attachment + 参数 → argv
 //! ```
 //!
-//! 十四个动作的名字与参数只写在这些登记里——没有第二处签名，后端也不逐一写方法
+//! 十六个动作的名字与参数只写在这些登记里——没有第二处签名，后端也不逐一写方法
 //! （动作名 → 登记，一次派发）。加一个动作 = 改它所属的那个资源文件。
 
 use serde_json::{Map, Value};
@@ -29,7 +29,7 @@ const MODULES: &[&[Action]] = &[
     base::ACTIONS,
 ];
 
-/// 十四个动作的登记，供后端与命令行按名字查。
+/// 十六个动作的登记，供后端与命令行按名字查。
 pub fn all() -> impl Iterator<Item = &'static Action> {
     MODULES.iter().flat_map(|actions| actions.iter())
 }

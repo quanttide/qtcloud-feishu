@@ -46,6 +46,7 @@ pub const ACTIONS: &[Action] = &[
         variants: &[],
         variants_key: "",
         defaults: &[],
+        logged: false,
     },
     Action {
         name: "im_chat_members",
@@ -61,6 +62,7 @@ pub const ACTIONS: &[Action] = &[
         variants: &[],
         variants_key: "",
         defaults: &[],
+        logged: false,
     },
     Action {
         name: "im_chat_link",
@@ -76,6 +78,7 @@ pub const ACTIONS: &[Action] = &[
         variants: &[],
         variants_key: "",
         defaults: &[],
+        logged: false,
     },
     Action {
         name: "im_messages_search",
@@ -96,5 +99,6 @@ pub const ACTIONS: &[Action] = &[
         variants_key: "",
         // 契约默认：搜索不去表情
         defaults: &[("with_reactions", Value::Bool(false))],
+        logged: false,
     },
 ];

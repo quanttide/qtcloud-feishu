@@ -33,7 +33,7 @@
 
 | 模块 | 职责 |
 |------|------|
-| `src/resources/` | 基础单元：六资源十四个动作，登记即契约，按飞书资源分文件（action/base/doc/im/mail/task/vc） |
+| `src/resources/` | 基础单元：六资源十六个动作，登记即契约，按飞书资源分文件（action/base/doc/im/mail/task/vc） |
 | `engine.rs` | 串联器：读定义，把定义展开成一串基础单元的活动 |
 | `flow.rs` | 执行器：读流程与定义推格（检查成立才推、动作先做失败不挪格） |
 | `store.rs` | 落盘契约：`raw/<资源>/<动作>/<页序>.json` + 附件 + 游标 |
@@ -47,11 +47,11 @@
 
 方案在 `src/cli/docs/dev-guide/`（总览 index + 五篇功能文档），目标是承接 qtcloud-connect 的平台层能力，长在现有骨架上，不出现第二套命令行实现：
 
-1. 补平台动作：扩 `im_messages_search` 的 `query`，新增 `im_chat_search`、`contact_search_user`、`im_messages_send`——资源从六个变七个，动作从十四个变十九个
+1. 补平台动作：扩 `im_messages_search` 的 `query`，新增 `im_chat_search`、`contact_search_user`、`im_messages_send`——资源从六个变七个；动作已从十四个到十六个（邮件发送通道迁入时新增草稿两动作），补完平台动作后到十九个
 2. 聊天记录搜索（im-search）
 3. 群通知（im-notice）：依赖群搜索、人员搜索、消息发送
 4. 邮件投递统计（mail-report）：拉取迁入，分类与报告留领域层
-5. 邮件发送通道（mail-send）：草稿确认制，新增草稿动作、操作日志、超时与 dry-run
+5. ~~邮件发送通道（mail-send）~~ **已迁入**（2026-10-29，库能力）：`mail_draft_create` / `mail_draft_send` 两动作，`logged` 操作日志（`ops.jsonl`，fail-closed），三十秒超时（`LARK_CLI_TIMEOUT` 可覆盖），`plan` dry-run；流程化草稿确认（执行器保存草稿 id）留第二阶段
 6. 聊天知识提取（im-extract）：只交付输入侧字段契约，模型与提示词不进本仓
 
 迁移原则见 dev-guide 总览：适配层只做去平台化不做领域化、流程是数据、写回人工确认、命令面仍不定义。

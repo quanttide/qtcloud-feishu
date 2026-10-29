@@ -26,4 +26,5 @@ pub const ACTIONS: &[Action] = &[Action {
     variants: &[],
     variants_key: "",
     defaults: &[],
+    logged: false,
 }];

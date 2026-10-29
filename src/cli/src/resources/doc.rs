@@ -26,6 +26,7 @@ pub const ACTIONS: &[Action] = &[
         variants: &[],
         variants_key: "",
         defaults: &[],
+        logged: false,
     },
     Action {
         name: "docs_fetch",
@@ -42,5 +43,6 @@ pub const ACTIONS: &[Action] = &[
         variants: &[],
         variants_key: "",
         defaults: &[],
+        logged: false,
     },
 ];

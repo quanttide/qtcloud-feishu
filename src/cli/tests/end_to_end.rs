@@ -137,6 +137,57 @@ fn 两步定义_先取链接再填进正文() {
 }
 
 #[test]
+fn 起草定义两步取链接填正文但不发() {
+    let fake = Fake::new("e2e_draft_create");
+    let engine = engine_of(&fake);
+    let mut ctx = context(&[("邮箱", "hr@example.com")]);
+    ctx.insert("候选人".to_string(), json!({"邮箱": "chenmo@example.com"}));
+    let outcome = engine.call("起草邀请信", &ctx).unwrap();
+    assert_eq!(
+        outcome.single["草稿id"], "mock-draft-001",
+        "起草回草稿 id：{:?}",
+        outcome.single
+    );
+
+    let log = fake.argv_log();
+    let draft = log
+        .iter()
+        .find(|line| line.contains("mail +send"))
+        .expect("该起草一封");
+    assert!(
+        !draft.contains("--confirm-send"),
+        "起草不带确认，信不会真发出去：{draft}"
+    );
+    assert!(draft.contains("--to chenmo@example.com"), "{draft}");
+    assert!(
+        fake_lark_cli::landed(&fake.store())
+            .contains(&"raw/mail/draft-create/0001.json".to_string()),
+        "起草也落盘，Studio 才有草稿可看"
+    );
+}
+
+#[test]
+fn 人确认后按草稿id把草稿发出去() {
+    let fake = Fake::new("e2e_draft_send");
+    let engine = engine_of(&fake);
+    let outcome = engine
+        .call(
+            "发草稿",
+            &context(&[("邮箱", "hr@example.com"), ("草稿id", "mock-draft-001")]),
+        )
+        .unwrap();
+    assert_eq!(outcome.single["邮件id"], "mock-from-draft");
+
+    let log = fake.argv_log();
+    let send = log
+        .iter()
+        .find(|line| line.contains("+draft-send"))
+        .expect("该发一封草稿");
+    assert!(send.contains("mail +draft-send --as user"), "{send}");
+    assert!(send.contains("--draft-id mock-draft-001"), "{send}");
+}
+
+#[test]
 fn 从原始数据重建后推一轮() {
     let fake = Fake::new("e2e_flow");
     let engine = engine_of(&fake);

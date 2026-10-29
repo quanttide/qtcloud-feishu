@@ -1,5 +1,7 @@
 # 邮件发送通道迁入
 
+> 迁入状态（2026-10-29）：第 1-5 步已在本仓落地（两动作 + `logged` 操作日志 + 超时 + `plan` + 端到端用例）；第 6 步（删 connect 代码）在 qtcloud-connect 仓，未随本次执行。流程化草稿确认仍留第二阶段。
+
 ## 现状
 
 发送通道在 `mail.rs`：`qtcloud-connect mail send` 调本机 lark-cli 的 `mail +send`，默认只生成草稿，带 `--confirm-send` 时直发；`+draft-send` 有封装但没接到命令上。附件用逗号串传 `--attach`，身份固定 `--as user`，邮箱固定为一个招聘邮箱，单次调用三十秒超时。

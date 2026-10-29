@@ -8,14 +8,22 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use qtcloud_feishu_cli::backend::Backend;
 use qtcloud_feishu_cli::engine::{self, Definitions};
 
+/// 临时目录的序号：pid 会被系统复用，旧进程还开着脚本文件时会撞出 Text file busy，
+/// 所以名字里再加一个单调递增的序号，保证每次新建都落全新路径。
+static SEQ: AtomicU64 = AtomicU64::new(0);
+
 /// 每个用例一块自己的临时目录，跑完不清理也不互相踩。
 pub fn tmp_dir(name: &str) -> PathBuf {
-    let dir =
-        std::env::temp_dir().join(format!("qtcloud-feishu-test-{}-{name}", std::process::id()));
+    let seq = SEQ.fetch_add(1, Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!(
+        "qtcloud-feishu-test-{}-{seq}-{name}",
+        std::process::id()
+    ));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).expect("建临时目录");
     dir
@@ -46,7 +54,8 @@ case "$*" in
   *"+messages"*) cat "{f}/messages.json" ;;
   *"chat-members-list"*) cat "{f}/members.json" ;;
   *"chats link"*) case "$*" in *permanently*) cat "{f}/chat-link-permanent.json" ;; *) cat "{f}/chat-link.json" ;; esac ;;
-  *"+send"*) if [ -f "{f}/fail-send" ]; then echo '{{"ok":false,"error":{{"message":"发信失败"}}}}' >&2; exit 2; fi; cat "{f}/send.json" ;;
+  *"+draft-send"*) cat "{f}/draft-send.json" ;;
+  *"+send"*) if [ -f "{f}/slow-send" ]; then sleep 3; fi; if [ -f "{f}/fail-send" ]; then echo '{{"ok":false,"error":{{"message":"发信失败"}}}}' >&2; exit 2; fi; case "$*" in *--confirm-send*) cat "{f}/send.json" ;; *) cat "{f}/draft.json" ;; esac ;;
   *"+record-list"*) cat "{f}/records.json" ;;
   *"task"*) cat "{f}/tasks.json" ;;
   *) echo '{{"ok":false,"error":{{"message":"fake 没有这条命令"}}}}' >&2; exit 2 ;;
@@ -70,6 +79,11 @@ esac
     /// 让发信这条命令失败（验"动作失败就不挪格"）。
     pub fn fail_send(&self) {
         fs::write(self.fixtures.join("fail-send"), b"1").unwrap();
+    }
+
+    /// 让发信这条命令慢下来（验超时分支）。
+    pub fn slow_send(&self) {
+        fs::write(self.fixtures.join("slow-send"), b"1").unwrap();
     }
 
     pub fn store(&self) -> PathBuf {
@@ -184,6 +198,16 @@ fn write_fixtures(dir: &std::path::Path) {
     )
     .unwrap();
     fs::write(
+        dir.join("draft.json"),
+        r#"{"ok":true,"data":{"draft_id":"mock-draft-001"}}"#,
+    )
+    .unwrap();
+    fs::write(
+        dir.join("draft-send.json"),
+        r#"{"ok":true,"data":{"message_id":"mock-from-draft","thread_id":"t-2"}}"#,
+    )
+    .unwrap();
+    fs::write(
         dir.join("tasks.json"),
         r#"{"ok":true,"data":{"items":[{"guid":"tk-001","summary":"核对简历","completed":false}],"has_more":false,"page_token":""}}"#,
     )
@@ -239,6 +263,25 @@ pub const DEFINITIONS: &str = r#"定义:
           to: "{{候选人.邮箱}}"
           subject: 量潮实训基地 · 群二维码
           body: "你好，扫码直接进群（群二维码见附件）。也可以点这个链接进群：{{链接.share_link}}"
+    出: {字段: {邮件id: message_id}}
+  - 名称: 起草邀请信
+    说明: 同一封信改成草稿：起草后停格，人确认后才发
+    步骤:
+      - 动作: im_chat_link
+        参数: {chat_id: "{{群}}"}
+        as: 链接
+      - 动作: mail_draft_create
+        参数:
+          mailbox: "{{邮箱}}"
+          to: "{{候选人.邮箱}}"
+          subject: 量潮实训基地 · 群二维码
+          body: "你好，扫码直接进群（群二维码见附件）。也可以点这个链接进群：{{链接.share_link}}"
+    出: {字段: {草稿id: draft_id}}
+  - 名称: 发草稿
+    说明: 人确认后，按草稿 id 把已起草的信发出去
+    步骤:
+      - 动作: mail_draft_send
+        参数: {draft_ids: "{{草稿id}}"}
     出: {字段: {邮件id: message_id}}
   - 名称: 发群二维码
     步骤:

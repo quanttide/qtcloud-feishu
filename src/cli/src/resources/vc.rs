@@ -27,6 +27,7 @@ pub const ACTIONS: &[Action] = &[
         variants: &[],
         variants_key: "",
         defaults: &[],
+        logged: false,
     },
     Action {
         name: "vc_meeting_get",
@@ -39,5 +40,6 @@ pub const ACTIONS: &[Action] = &[
         variants: &[],
         variants_key: "",
         defaults: &[],
+        logged: false,
     },
 ];
