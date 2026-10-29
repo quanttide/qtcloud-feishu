@@ -12,6 +12,15 @@
 | 路径 | 说明 |
 |------|------|
 | `src/cli/` | 命令行工具（Rust，crate `qtcloud-feishu-cli`，命令 `qtcloud-feishu`） |
+| `src/studio/` | 工作台（Flutter，web 静态产物） |
+
+## Studio 进度
+
+骨架刚立（2026-10-29）：`flutter create` 默认工程 + 占位页，界面未定形。
+
+- 定位：与 CLI 共用同一套文件契约（资源登记、流程定义、落盘、游标），CLI 执行落盘、Studio 看与确认；不实现第二套飞书调用
+- 首批界面方向：待确认队列（草稿确认制）、流程看板（推格状态）、能力目录（从登记生成表单）
+- 验证：`flutter analyze` / `flutter test` / `flutter build web --release --base-href /`
 
 ## CLI 进度
 
