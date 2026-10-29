@@ -71,6 +71,28 @@ void main() {
     expect(reject.onPressed, isNull);
   });
 
+  testWidgets('有问题但有草稿：横幅提示，列表照常显示', (tester) async {
+    const draft = PendingDraft(
+      draftId: 'demo-draft-002',
+      candidate: 'herui@example.com',
+      to: 'herui@example.com',
+      subject: '主题',
+      body: '正文',
+      recordedAt: null,
+      missing: ['信封'],
+    );
+    await tester.pumpWidget(StudioApp(
+        source: _FakeSource(const DraftLoad(
+            available: true,
+            drafts: [draft],
+            problems: ['草稿 demo-draft-002 没有对应信封']))));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('没有对应信封'), findsOneWidget, reason: '问题要在');
+    expect(find.text('主题 · herui@example.com'), findsOneWidget,
+        reason: '列表不能被问题顶掉');
+  });
+
   testWidgets('读取出错显示问题而不是空白页', (tester) async {
     await tester.pumpWidget(StudioApp(
         source: _FakeSource(const DraftLoad(

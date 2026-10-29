@@ -56,14 +56,17 @@ class _DraftQueueScreenState extends State<DraftQueueScreen> {
             return _Problem(
                 '数据源没接上：${load.problems.join('；')}\n跑过一次起草流程后再来。');
           }
-          if (load.problems.isNotEmpty) {
-            return _Problem(load.problems.join('\n'));
-          }
           if (load.drafts.isEmpty) {
+            // 没草稿可列时，问题才占整页；有草稿就横幅提示，不顶掉列表
+            if (load.problems.isNotEmpty) {
+              return _Problem(load.problems.join('\n'));
+            }
             return const Center(child: Text('没有待确认的草稿'));
           }
           return ListView(
             children: [
+              if (load.problems.isNotEmpty)
+                _ProblemBanner(load.problems.join('\n')),
               for (final draft in load.drafts) _DraftCard(draft: draft),
             ],
           );
@@ -84,6 +87,30 @@ class _Problem extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(message, textAlign: TextAlign.center),
+      ),
+    );
+  }
+}
+
+/// 有问题但草稿还在：横幅提示，列表照常显示。
+class _ProblemBanner extends StatelessWidget {
+  const _ProblemBanner(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
       ),
     );
   }
