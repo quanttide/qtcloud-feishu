@@ -72,8 +72,8 @@ class _DraftCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const Spacer(),
-                // 驳回先不做：草稿状态的写回方式随落盘契约一起定，
-                // 界面先立住，写回接上后再放开这两个按钮。
+                // 驳回先不做：确认写回随 CLI 的草稿确认机制（roadmap 阶段二）定形；
+                // 判据已定——Studio 不发明第二种确认语义，CLI 定成动作就走动作，定成状态就改状态。
                 FilledButton(onPressed: null, child: const Text('确认发送')),
                 const SizedBox(width: 8),
                 OutlinedButton(onPressed: null, child: const Text('驳回')),

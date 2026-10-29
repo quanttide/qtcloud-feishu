@@ -20,7 +20,7 @@
 
 - 定位：与 CLI 共用同一套文件契约（资源登记、流程定义、落盘、游标），CLI 执行落盘、Studio 看与确认；不实现第二套飞书调用
 - 起点页选待确认队列：草稿确认制是唯一需人参与才闭环的界面，且只消费落盘草稿记录，契约最窄；按钮先禁用，写回随落盘契约一起定
-- 后续界面方向：流程看板（推格状态）、能力目录（从登记生成表单）
+- 后续界面方向：流程看板（推格状态）、能力目录（从登记生成表单）；顺序以 [src/studio/docs/dev-guide/roadmap.md](src/studio/docs/dev-guide/roadmap.md) 为准
 - 验证：`flutter analyze` / `flutter test` / `flutter build web --release --base-href /`
 
 ## CLI 进度
@@ -45,7 +45,7 @@
 
 ### 下一步：qtcloud-connect 飞书功能迁入
 
-方案在 `src/cli/docs/dev-guide/`（总览 index + 五篇功能文档），目标是承接 qtcloud-connect 的平台层能力，长在现有骨架上，不出现第二套命令行实现：
+实施顺序与阶段判据以 [src/cli/docs/dev-guide/roadmap.md](src/cli/docs/dev-guide/roadmap.md) 为准（2026-10-29 起）；本节只留概要。方案原文在 `src/cli/docs/dev-guide/`（总览 index + 五篇功能文档），目标是承接 qtcloud-connect 的平台层能力，长在现有骨架上，不出现第二套命令行实现：
 
 1. 补平台动作：扩 `im_messages_search` 的 `query`，新增 `im_chat_search`、`contact_search_user`、`im_messages_send`——资源从六个变七个；动作已从十四个到十六个（邮件发送通道迁入时新增草稿两动作），补完平台动作后到十九个
 2. 聊天记录搜索（im-search）
